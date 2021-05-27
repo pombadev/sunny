@@ -60,12 +60,17 @@ fn app_main() -> error::Result<()> {
 
             let pb = progress.add(ProgressBar::new_spinner());
             pb.enable_steady_tick(100);
-            pb.set_style(ProgressStyle::default_spinner().template("{msg} {spinner} ({elapsed})"));
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{prefix} {spinner}\n ↳ {msg} ({elapsed})"),
+            );
 
             let current_album = index + 1;
             let pre = Arc::new(format!("[{}/{}] {}", current_album, total_albums, album));
             let total_tracks = tracks.len();
             let release_date = timestamp(release_date);
+
+            pb.set_prefix(&pre.clone());
 
             tracks.par_iter().for_each(|track| {
                 let album = Arc::new(album.clone());
@@ -85,13 +90,7 @@ fn app_main() -> error::Result<()> {
                 let pre = pre.clone();
 
                 pool.spawn(move || {
-                    let msg = format!(
-                        "{} | [{}/{}] {}",
-                        pre,
-                        track.num,
-                        total_tracks,
-                        track.name.clone()
-                    );
+                    let msg = format!("[{}/{}] {}", track.num, total_tracks, track.name.clone());
 
                     pb.set_message(&msg);
 
@@ -119,7 +118,7 @@ fn app_main() -> error::Result<()> {
                         track_format,
                     ) {
                         Ok(_) => {
-                            pb.println(&format!("{} {}", &msg, green_check("")));
+                            pb.println(&format!("{}\n ↳ {} {}", &pre, &msg, green_check("")));
                         }
                         Err(err) => {
                             if err == error::Error::FileExist(err.to_string()) {
