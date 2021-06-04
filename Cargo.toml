@@ -11,6 +11,7 @@ exclude = ["assets/*"]
 categories = ["command-line-interface"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
+homepage = "https://docs.rs/crate/sunny"
 
 [lib]
 path = "src/lib/mod.rs"
