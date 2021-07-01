@@ -70,7 +70,7 @@ fn app_main() -> error::Result<()> {
             let total_tracks = tracks.len();
             let release_date = timestamp(release_date);
 
-            pb.set_prefix(&pre.clone());
+            pb.set_prefix(&pre);
 
             tracks.par_iter().for_each(|track| {
                 let album = Arc::new(album.clone());

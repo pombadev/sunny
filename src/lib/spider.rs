@@ -1,5 +1,3 @@
-//! Spider crawls the web, I crawl bandcamp.com.
-
 use async_std::task;
 use html_escape::decode_html_entities;
 use indicatif::{ProgressBar, ProgressStyle};

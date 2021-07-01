@@ -15,7 +15,7 @@
 
 ### Demo
 
-[![Demo](./assets/demo.gif)](./assets/demo.gif)
+[![Demo](./assets/demo.svg)](./assets/demo.svg)
 
 
 ### Motivation
@@ -59,11 +59,11 @@ sunny -u https://clevergirl.bandcamp.com/album/no-drum-and-bass-in-the-jazz-room
 sunny -u https://65daysofstatic.bandcamp.com/track/twenty-four-twelve-twenty
 ```
 
-## Run tests
+<!-- ## Run tests
 
 ```sh
 cargo test
-```
+``` -->
 
 ## Contributing
 
