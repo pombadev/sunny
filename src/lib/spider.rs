@@ -215,7 +215,7 @@ fn get_album(dom: &Html) -> Option<Album> {
 fn fetch_html(url: &str, pb: Option<&ProgressBar>) -> Result<Html> {
     let mut res = task::block_on(client(url)).map_err(|e| {
         if let Some(pb) = pb {
-            pb.finish_with_message(&red_cross(""));
+            pb.finish_with_message(red_cross(""));
         }
         Error::Http(e.to_string())
     })?;
@@ -224,7 +224,7 @@ fn fetch_html(url: &str, pb: Option<&ProgressBar>) -> Result<Html> {
 
     if *status == surf::StatusCode::NotFound {
         if let Some(pb) = pb {
-            pb.finish_with_message(&red_cross(""));
+            pb.finish_with_message(red_cross(""));
         }
 
         return Err(Error::Http(status.canonical_reason().to_string()));
@@ -233,13 +233,13 @@ fn fetch_html(url: &str, pb: Option<&ProgressBar>) -> Result<Html> {
     let body = task::block_on(res.body_string())
         .map(|res| {
             if let Some(pb) = pb {
-                pb.finish_with_message(&green_check(""));
+                pb.finish_with_message(green_check(""));
             }
             res
         })
         .map_err(|e| {
             if let Some(pb) = pb {
-                pb.finish_with_message(&red_cross(""));
+                pb.finish_with_message(red_cross(""));
             }
             Error::Http(e.to_string())
         })?;
@@ -265,7 +265,7 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
     if is_album {
         let album = get_album(&html);
 
-        pb.finish_with_message(&green_check(""));
+        pb.finish_with_message(green_check(""));
 
         return Ok(album.into_iter().collect());
     }
@@ -288,7 +288,7 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
             })
             .collect::<Vec<_>>();
 
-        pb.finish_with_message(&green_check(""));
+        pb.finish_with_message(green_check(""));
 
         return Ok(albums);
     }

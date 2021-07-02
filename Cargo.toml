@@ -1,17 +1,19 @@
 [package]
 name = "sunny"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["pjmp"]
 edition = "2018"
 description = """
 Tool to download free music from Bandcamp.
 Automatically organize files to folder, ID3 tags (including album art).
 """
-exclude = ["assets/*"]
-categories = ["command-line-interface"]
+categories = ["command-line-utilities"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 homepage = "https://docs.rs/crate/sunny"
+repository = "https://github.com/pjmp/sunny"
+documentation = "https://docs.rs/sunny"
+keywords = ["bandcamp", "bandcamp-downloader", "bandcamp-dl"]
 
 [lib]
 path = "src/lib/mod.rs"
@@ -23,7 +25,7 @@ console = "0.14.1"
 gjson = "0.8.0"
 html-escape = "0.2.9"
 id3 = "0.6.4"
-indicatif = "0.15.0"
+indicatif = "0.16.2"
 num_cpus = "1.13.0"
 rayon = "1.5.1"
 scraper = {version = "0.12.0", features = [], default-features = false}
