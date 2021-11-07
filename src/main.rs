@@ -46,7 +46,7 @@ fn app_main() -> error::Result<()> {
         .iter()
         .enumerate()
         .try_for_each(|(index, album)| -> error::Result<()> {
-            prepare_directory(path.as_ref(), &album)?;
+            prepare_directory(path.as_ref(), album)?;
 
             let Album {
                 ref album_art_url,
@@ -70,7 +70,7 @@ fn app_main() -> error::Result<()> {
             let total_tracks = tracks.len();
             let release_date = timestamp(release_date);
 
-            pb.set_prefix(&pre);
+            pb.set_prefix(format!("{}", pre));
 
             tracks.par_iter().for_each(|track| {
                 let album = Arc::new(album.clone());
@@ -92,7 +92,7 @@ fn app_main() -> error::Result<()> {
                 pool.spawn(move || {
                     let msg = format!("[{}/{}] {}", track.num, total_tracks, track.name.clone());
 
-                    pb.set_message(&msg);
+                    pb.set_message(msg.to_string());
 
                     if dry_run {
                         pb.println(&format!(

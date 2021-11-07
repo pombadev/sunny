@@ -68,7 +68,7 @@ fn validate_format(f: &str) -> Result<String, String> {
 }
 
 fn from_str(input: &str) -> String {
-    match Url::parse(&input) {
+    match Url::parse(input) {
         Ok(url) => url.to_string(),
         // assuming that user has passed just the artist name
         Err(err) => {
@@ -93,7 +93,7 @@ pub fn expand_tilde(p: &str) -> PathBuf {
 }
 
 fn validate_path(path: &str) -> Result<PathBuf, String> {
-    let path = expand_tilde(&path);
+    let path = expand_tilde(path);
 
     let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
 

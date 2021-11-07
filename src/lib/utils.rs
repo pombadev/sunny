@@ -161,6 +161,7 @@ pub fn parse_track_template(
     strfmt(format, &vars).expect("failed to format keys")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn worker(
     album: Arc<String>,
     artist: Arc<String>,

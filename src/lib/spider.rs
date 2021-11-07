@@ -177,7 +177,7 @@ fn get_all_album_links(dom: &Html) -> Vec<String> {
 /// Facade for `scrape_by_*` methods.
 /// Calls `scrape_by_application_ld_json` or `scrape_by_data_tralbum` internal methods if first fails.
 fn get_album(dom: &Html) -> Option<Album> {
-    scrape_by_application_ld_json(&dom).map_or_else(|| scrape_by_data_tralbum(&dom), Some)
+    scrape_by_application_ld_json(dom).map_or_else(|| scrape_by_data_tralbum(dom), Some)
 
     // match strategy_one(&doc) {
     //     Some(mut first) => {
@@ -280,7 +280,7 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
         let albums = get_all_album_links(&html)
             .par_iter()
             .filter_map(|url| {
-                if let Ok(dom) = fetch_html(&url, None) {
+                if let Ok(dom) = fetch_html(url, None) {
                     get_album(&dom)
                 } else {
                     None
