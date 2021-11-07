@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use clap::Clap;
+use clap::Parser;
 use strfmt::strfmt;
 use surf::Url;
 
 use sunny::utils::format_container;
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 #[clap(about, version, after_help = "note: run --help to see more details")]
 pub struct Config {
     /// Artist's bandcamp username or full url

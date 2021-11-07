@@ -1,6 +1,6 @@
 [package]
 name = "sunny"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["pjmp"]
 edition = "2018"
 description = """
@@ -19,12 +19,12 @@ keywords = ["bandcamp", "bandcamp-downloader", "bandcamp-dl"]
 path = "src/lib/mod.rs"
 
 [dependencies]
-async-std = "1.9.0"
-clap = "3.0.0-beta.2"
-console = "0.14.1"
+async-std = "1.10.0"
+clap = "3.0.0-beta.5"
+console = "0.15.0"
 gjson = "0.8.0"
 html-escape = "0.2.9"
-id3 = "0.6.4"
+id3 = "0.6.5"
 indicatif = "0.16.2"
 num_cpus = "1.13.0"
 rayon = "1.5.1"
