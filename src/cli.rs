@@ -14,7 +14,7 @@ pub struct Config {
     pub(crate) url: String,
 
     /// Directory path where downloads should be saved to
-    #[clap(short, long, display_order = 2, validator = validate_path, parse(from_str = expand_tilde), long_about = r"
+    #[clap(short, long, display_order = 2, validator = validate_path, parse(from_str = expand_tilde), long_help = r"
 Directory path where downloads should be saved to.
 By default files are saved in the current directory.
 ")]
@@ -30,7 +30,7 @@ By default files are saved in the current directory.
         short,
         long,
         validator = validate_format,
-        long_about = r"
+        long_help = r"
 Specify track format: default is '{num} - {track}'
 
 available keys:

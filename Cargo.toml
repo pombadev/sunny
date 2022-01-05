@@ -20,7 +20,7 @@ path = "src/lib/mod.rs"
 
 [dependencies]
 async-std = "1.10.0"
-clap = "3.0.0-beta.5"
+clap = {version = "3.0.4", features = ["derive"]}
 console = "0.15.0"
 gjson = "0.8.0"
 html-escape = "0.2.9"
