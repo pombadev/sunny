@@ -176,7 +176,7 @@ pub fn worker(
     )?;
 
     if track.url.is_empty() {
-        eprintln!("Track url is empty, skipping");
+        // eprintln!("Track url is empty, skipping");
         return Ok(());
     }
 

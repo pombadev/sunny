@@ -65,7 +65,7 @@ impl Album {
         }
 
         if let Some(ref tags) = self.tags {
-            if !tags.is_empty() {
+            if tags.is_empty() {
                 self.tags = other.tags;
             }
         }

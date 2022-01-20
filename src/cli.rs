@@ -10,7 +10,7 @@ use sunny::utils::format_container;
 #[clap(about, version, after_help = "note: run --help to see more details")]
 pub struct Config {
     /// Artist's bandcamp username or full url
-    #[clap(display_order = 1, parse(from_str = from_str))]
+    #[clap(display_order = 1, parse(from_str = from_str), value_name = "ARTIST | URL")]
     pub(crate) url: String,
 
     /// Directory path where downloads should be saved to
@@ -30,6 +30,7 @@ By default files are saved in the current directory.
         short,
         long,
         validator = validate_format,
+        value_name = "FORMAT",
         long_help = r"
 Specify track format: default is '{num} - {track}'
 
@@ -48,6 +49,18 @@ expands to:
 note that `.mp3` is appended automatically.
 ")]
     pub(crate) track_format: Option<String>,
+
+    /// Skip downloading these albums, note that albums need to be delimited by ','
+    /// eg: -s 'one,two' or --skip-albums='one,two'
+    #[clap(
+        short,
+        long,
+        multiple_values = true,
+        value_name = "ALBUMS",
+        value_delimiter = ',',
+        require_delimiter = true
+    )]
+    pub(crate) skip_albums: Option<Vec<String>>,
 }
 
 impl Default for Config {

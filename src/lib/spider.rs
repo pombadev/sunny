@@ -81,7 +81,7 @@ fn scrape_by_application_ld_json(dom: &Html) -> Option<Album> {
                         url = track_url.url;
                     } else {
                         // no url is found for the track's file
-                        eprintln!("No downloadable url found for '{}', skipping.", track_name);
+                        // eprintln!("No downloadable url found for '{}', skipping.", track_name);
                         return None;
                     }
                 }
@@ -104,7 +104,7 @@ fn scrape_by_application_ld_json(dom: &Html) -> Option<Album> {
                 url = track_url.url;
             } else {
                 // no url is found for the track's file
-                eprintln!("No downloadable url found for '{}', skipping.", &track_name);
+                // eprintln!("No downloadable url found for '{}', skipping.", &track_name);
                 return None;
             }
         }
@@ -172,7 +172,7 @@ fn get_all_album_links(dom: &Html) -> Vec<String> {
     if let Some(base_url) = url_selector.value().attr("content") {
         dom.select(&albums_selector)
             .filter_map(|el| el.value().attr("href"))
-            .map(|album| format!("{}{}", base_url, album))
+            .map(|album| base_url.to_owned() + album)
             .collect::<Vec<_>>()
     } else {
         vec![]

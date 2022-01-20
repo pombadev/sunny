@@ -27,6 +27,7 @@ fn app_main() -> error::Result<()> {
         url,
         track_format,
         dry_run,
+        skip_albums,
         ..
     } = cli::Config::default();
 
@@ -43,6 +44,13 @@ fn app_main() -> error::Result<()> {
     albums
         .par_iter()
         .enumerate()
+        .filter(|(_, album)| {
+            if let Some(to_skip) = &skip_albums {
+                !to_skip.contains(&album.album)
+            } else {
+                true
+            }
+        })
         .try_for_each(|(index, album)| -> error::Result<()> {
             prepare_directory(path.as_ref(), album)?;
 
