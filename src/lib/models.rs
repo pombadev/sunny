@@ -64,8 +64,10 @@ impl Album {
             self.tracks = other.tracks;
         }
 
-        if self.tags.is_none() {
-            self.tags = other.tags;
+        if let Some(ref tags) = self.tags {
+            if !tags.is_empty() {
+                self.tags = other.tags;
+            }
         }
 
         if self.album_art_url.is_none() {
@@ -75,43 +77,5 @@ impl Album {
         if self.artist_art_url.is_none() {
             self.artist_art_url = other.artist_art_url;
         }
-    }
-
-    pub fn missing_fields(&self) -> Vec<String> {
-        let mut missing = vec![];
-
-        if self.artist.is_empty() {
-            missing.push(String::from("artist"))
-        }
-
-        if self.album.is_empty() {
-            missing.push(String::from("album"))
-        }
-
-        if self.release_date.is_empty() {
-            missing.push(String::from("release_date"))
-        }
-
-        if self.tracks.is_empty() || self.tracks.iter().all(|track| track.has_missing_fields()) {
-            missing.push(String::from("tracks"))
-        }
-
-        if self.tags.is_none() {
-            missing.push(String::from("tags"))
-        }
-
-        if self.album_art_url.is_none() {
-            missing.push(String::from("album_art_url"))
-        }
-
-        if self.artist_art_url.is_none() {
-            missing.push(String::from("artist_art_url"))
-        }
-
-        missing
-    }
-
-    pub fn required_fields_missing(&self) -> bool {
-        !self.missing_fields().is_empty()
     }
 }

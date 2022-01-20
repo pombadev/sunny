@@ -1,15 +1,15 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::Arc,
 };
 
 use async_std::task;
-use console::Style;
+use console::style;
 use id3::{
     frame::{Lyrics, Picture, PictureType},
-    Tag, Timestamp, Version,
+    Tag, TagLike, Timestamp, Version,
 };
 use strfmt::strfmt;
 use surf::{middleware::Redirect, RequestBuilder};
@@ -23,6 +23,14 @@ use crate::{
 /// Apple Safari User Agent string
 pub const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15";
 
+pub fn red_cross() -> String {
+    style("✘").bold().red().to_string()
+}
+
+pub fn green_check() -> String {
+    style("✔").bold().green().to_string()
+}
+
 pub fn client(url: impl AsRef<str>) -> RequestBuilder {
     surf::get(url)
         .header("User-Agent", USER_AGENT)
@@ -31,8 +39,13 @@ pub fn client(url: impl AsRef<str>) -> RequestBuilder {
 
 pub fn prepare_directory(path: Option<&PathBuf>, album: &Album) -> Result<()> {
     let path = match path {
-        Some(path) => format!("{}/{}/{}", path.display(), &album.artist, &album.album),
-        None => format!("{}/{}", &album.artist, &album.album),
+        Some(path) => format!(
+            "{}{MAIN_SEPARATOR}{}{MAIN_SEPARATOR}{}",
+            path.display(),
+            &album.artist,
+            &album.album
+        ),
+        None => format!("{}{MAIN_SEPARATOR}{}", &album.artist, &album.album),
     };
 
     let dir = Path::new(&path);
@@ -49,21 +62,25 @@ pub fn file_path(
     artist: Arc<String>,
     track: &Track,
     path: Arc<Option<PathBuf>>,
-    track_format: Arc<Option<String>>,
+    track_format: Arc<String>,
 ) -> Result<PathBuf> {
-    let parent = format!("{}/{}", &artist, &album);
+    let parent = format!("{}{MAIN_SEPARATOR}{}", &artist, &album);
 
-    let file_name = match *track_format {
-        Some(ref format) => {
-            parse_track_template(format, Arc::clone(&album), Arc::clone(&artist), track)
-        }
-        None => format!("{} - {}", &track.num, &track.name),
+    let file_name = if track_format.is_empty() {
+        format!("{} - {}", &track.num, &track.name)
+    } else {
+        parse_track_template(
+            &track_format,
+            Arc::clone(&album),
+            Arc::clone(&artist),
+            track,
+        )
     };
 
     let file = if let Some(ref path) = *path {
-        path.join(format!("{}/{}.mp3", parent, file_name))
+        path.join(format!("{}{MAIN_SEPARATOR}{}.mp3", parent, file_name))
     } else {
-        PathBuf::from(format!("{}/{}.mp3", parent, file_name))
+        PathBuf::from(format!("{}{MAIN_SEPARATOR}{}.mp3", parent, file_name))
     };
 
     if file.exists() {
@@ -107,40 +124,18 @@ pub fn timestamp(date_string: &str) -> Option<Timestamp> {
     }
 }
 
-pub fn red_cross(msg: &str) -> String {
-    format!(
-        "{}{}",
-        msg,
-        Style::new()
-            .red()
-            .bold()
-            .apply_to(if msg.is_empty() { "✘" } else { "" })
-    )
-}
-
-pub fn green_check(msg: &str) -> String {
-    format!(
-        "{}{}",
-        msg,
-        Style::new()
-            .green()
-            .bold()
-            .apply_to(if msg.is_empty() { "✔" } else { "" })
-    )
-}
-
 pub fn format_container(
     num: String,
     track: String,
     album: String,
     artist: String,
 ) -> HashMap<String, String> {
-    let mut vars = HashMap::new();
-    vars.insert("num".to_string(), num);
-    vars.insert("track".to_string(), track);
-    vars.insert("album".to_string(), album);
-    vars.insert("artist".to_string(), artist);
-    vars
+    HashMap::from([
+        ("num".to_string(), num),
+        ("track".to_string(), track),
+        ("album".to_string(), album),
+        ("artist".to_string(), artist),
+    ])
 }
 
 pub fn parse_track_template(
@@ -165,12 +160,12 @@ pub fn parse_track_template(
 pub fn worker(
     album: Arc<String>,
     artist: Arc<String>,
-    tags: Arc<Option<String>>,
-    album_art_url: Arc<Option<String>>,
+    tags: Arc<String>,
+    album_art_url: Arc<String>,
     release_date: Option<id3::Timestamp>,
     track: Track,
     path: Arc<Option<PathBuf>>,
-    track_format: Arc<Option<String>>,
+    track_format: Arc<String>,
 ) -> Result<()> {
     let path = file_path(
         Arc::clone(&album),
@@ -180,17 +175,23 @@ pub fn worker(
         track_format,
     )?;
 
+    if track.url.is_empty() {
+        eprintln!("Track url is empty, skipping");
+        return Ok(());
+    }
+
     let res = task::block_on(client(&track.url).recv_bytes())?;
 
     let mut file = task::block_on(async_std::fs::File::create(&path))?;
 
-    let mut res = &res[..];
+    task::block_on(async_std::io::copy(&mut res.as_slice(), &mut file))?;
 
-    task::block_on(async_std::io::copy(&mut res, &mut file))?;
-
-    let album_art = match *album_art_url {
-        None => None,
-        Some(ref url) => Some(task::block_on(client(url).recv_bytes())?),
+    let album_art = if album_art_url.is_empty() {
+        None
+    } else {
+        Some(task::block_on(
+            client(album_art_url.to_string()).recv_bytes(),
+        )?)
     };
 
     tag_mp3(album, artist, tags, album_art, release_date, &track, &path)?;
@@ -201,7 +202,7 @@ pub fn worker(
 pub fn tag_mp3(
     album: Arc<String>,
     artist: Arc<String>,
-    tags: Arc<Option<String>>,
+    tags: Arc<String>,
     album_art: Option<Vec<u8>>,
     release_date: Option<id3::Timestamp>,
     track: &Track,
@@ -216,19 +217,19 @@ pub fn tag_mp3(
     tag.set_album_artist(&*artist);
 
     if let Some(ref lyrics) = track.lyrics {
-        tag.add_lyrics(Lyrics {
+        tag.add_frame(Lyrics {
             lang: "eng".to_string(),
             description: "".to_string(),
             text: String::from(lyrics.as_str()),
         });
     }
 
-    if let Some(ref genre) = *tags {
-        tag.set_genre(genre);
+    if !tags.is_empty() {
+        tag.set_genre(tags.to_string());
     }
 
     if let Some(album_art) = album_art {
-        tag.add_picture(Picture {
+        tag.add_frame(Picture {
             mime_type: "image/jpeg".to_string(),
             picture_type: PictureType::CoverFront,
             description: "".to_string(),

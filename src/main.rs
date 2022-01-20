@@ -1,17 +1,18 @@
 mod cli;
 mod logger;
 
+use console::style;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use std::{sync::Arc, thread, time};
+use std::{path::MAIN_SEPARATOR, sync::Arc, thread, time};
 
 use logger::Logger;
 use sunny::{
     error,
     models::{Album, Track},
     spider::fetch_albums,
-    utils::{green_check, prepare_directory, timestamp, worker},
+    utils::{green_check, prepare_directory, red_cross, timestamp, worker},
 };
 
 fn main() {
@@ -29,121 +30,119 @@ fn app_main() -> error::Result<()> {
         ..
     } = cli::Config::default();
 
-    let albums = fetch_albums(&url)?;
-
-    let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(num_cpus::get())
-        .build()?;
+    let thread_pool = rayon::ThreadPoolBuilder::new().build()?;
 
     let progress = MultiProgress::new();
     progress.set_draw_target(ProgressDrawTarget::stdout());
+    let spinner_style = ProgressStyle::default_spinner().template("{prefix} {spinner} {wide_msg}");
 
-    let track_format = Arc::new(track_format);
-
+    let albums = fetch_albums(&url)?;
+    let track_format = Arc::new(track_format.unwrap_or_else(String::new));
     let total_albums = albums.len();
 
     albums
-        .iter()
+        .par_iter()
         .enumerate()
         .try_for_each(|(index, album)| -> error::Result<()> {
             prepare_directory(path.as_ref(), album)?;
 
             let Album {
-                ref album_art_url,
-                ref album,
                 ref artist,
+                ref album,
                 ref release_date,
-                ref tags,
                 ref tracks,
+                ref tags,
+                ref album_art_url,
                 ..
             } = album;
 
+            let current_album = index + 1;
+            let prefix = Arc::new(format!(
+                "[{}{MAIN_SEPARATOR}{}] {}",
+                current_album, total_albums, &album
+            ));
+            let total_tracks = tracks.len();
+            let album_prefix = Arc::new((&album).to_string());
+
             let pb = progress.add(ProgressBar::new_spinner());
             pb.enable_steady_tick(100);
-            pb.set_style(
-                ProgressStyle::default_spinner()
-                    .template("{prefix} {spinner}\n ↳ {msg} ({elapsed})"),
-            );
+            pb.set_prefix(prefix.to_string());
 
-            let current_album = index + 1;
-            let pre = Arc::new(format!("[{}/{}] {}", current_album, total_albums, album));
-            let total_tracks = tracks.len();
             let release_date = timestamp(release_date);
 
-            pb.set_prefix(format!("{}", pre));
+            tracks
+                .par_iter()
+                .try_for_each(|track| -> error::Result<()> {
+                    let pb = pb.clone();
+                    pb.set_style(spinner_style.clone());
 
-            tracks.par_iter().for_each(|track| {
-                let album = Arc::new(album.clone());
-                let album_art_url = Arc::new(album_art_url.clone());
-                let artist = Arc::new(artist.clone());
-                let path = Arc::new(path.clone());
-                let pb = Arc::new(pb.clone());
-                let tags = Arc::new(tags.clone());
-                let track_format = Arc::clone(&track_format);
-                let track = Track {
-                    num: track.num,
-                    name: track.name.clone(),
-                    url: track.url.clone(),
-                    lyrics: track.lyrics.clone(),
-                };
+                    let album = Arc::new(album.clone());
+                    let album_art_url = Arc::new(album_art_url.clone().unwrap_or_else(String::new));
+                    let artist = Arc::new(artist.clone());
+                    let path = Arc::new(path.clone());
+                    let pb = Arc::new(pb);
+                    let tags = Arc::new(tags.clone().unwrap_or_else(String::new));
+                    let track_format = Arc::clone(&track_format);
+                    let track = Track { ..track.to_owned() };
 
-                let pre = pre.clone();
+                    let track_name = track.name.clone();
+                    let prefix = album_prefix.clone();
 
-                pool.spawn(move || {
-                    let msg = format!("[{}/{}] {}", track.num, total_tracks, track.name.clone());
-
-                    pb.set_message(msg.to_string());
-
-                    if dry_run {
-                        pb.println(&format!(
-                            "{}\n ↳ [{}/{}] {} {}",
-                            pre,
+                    thread_pool.spawn(move || {
+                        pb.set_message(format!(
+                            "[{}{MAIN_SEPARATOR}{}] {}",
                             track.num,
                             total_tracks,
-                            track.name.clone(),
-                            green_check("")
+                            track_name.clone()
                         ));
-                        thread::sleep(time::Duration::from_millis(500));
-                        return;
-                    }
 
-                    match worker(
-                        album,
-                        artist,
-                        tags,
-                        album_art_url,
-                        release_date,
-                        track,
-                        path,
-                        track_format,
-                    ) {
-                        Ok(_) => {
-                            pb.println(&format!("{}\n ↳ {} {}", &pre, &msg, green_check("")));
+                        if dry_run {
+                            pb.println(format!(
+                                "{}{MAIN_SEPARATOR}{} {}",
+                                &prefix.clone(),
+                                &track_name.clone(),
+                                style("✔").black().bold().dim()
+                            ));
+                            thread::sleep(time::Duration::from_millis(500));
+                            return;
                         }
-                        Err(err) => {
-                            if err == error::Error::FileExist(err.to_string()) {
-                                Logger::info(err.to_string());
-                            } else {
-                                Logger::error(err.to_string());
+
+                        match worker(
+                            album,
+                            artist,
+                            tags,
+                            album_art_url,
+                            release_date,
+                            track,
+                            path,
+                            track_format,
+                        ) {
+                            Ok(_) => {
+                                pb.println(format!(
+                                    "{}{MAIN_SEPARATOR}{} {}",
+                                    &prefix.clone(),
+                                    &track_name.clone(),
+                                    green_check()
+                                ));
                             }
-                            pb.finish();
-                        }
-                    };
-                });
-            });
+                            Err(err) => {
+                                if err == error::Error::FileExist(err.to_string()) {
+                                    Logger::info(err.to_string());
+                                } else {
+                                    Logger::error(err.to_string());
+                                }
+                                pb.println(format!(
+                                    "{}{MAIN_SEPARATOR}{} {}",
+                                    &prefix.clone(),
+                                    &track_name.clone(),
+                                    red_cross()
+                                ));
+                            }
+                        };
+                    });
 
-            // println!(
-            //     "No of threads: {}",
-            //     String::from_utf8_lossy(
-            //         &*std::process::Command::new("sh")
-            //             .arg("-c")
-            //             .arg(format!("ps huH p {} |  wc -l", std::process::id()))
-            //             .output()
-            //             .expect("unable to run `ps`") // .stderr
-            //             .stdout
-            //     )
-            //     .trim()
-            // );
+                    Ok(())
+                })?;
 
             Ok(())
         })?;
