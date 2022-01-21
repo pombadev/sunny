@@ -46,17 +46,71 @@ cargo install sunny
 ## Usage
 
 ```sh
-# whole discography of an artist
-sunny -u https://65daysofstatic.bandcamp.com/music
+# whole discography of an artist by url
+sunny https://65daysofstatic.bandcamp.com/music
 
-# whole discography of an artist
-sunny -u 65daysofstatic
+# whole discography just by the name of the artist
+sunny 65daysofstatic
 
 # single album
-sunny -u https://clevergirl.bandcamp.com/album/no-drum-and-bass-in-the-jazz-room
+sunny https://clevergirl.bandcamp.com/album/no-drum-and-bass-in-the-jazz-room
 
 # single track
-sunny -u https://65daysofstatic.bandcamp.com/track/twenty-four-twelve-twenty
+sunny https://65daysofstatic.bandcamp.com/track/twenty-four-twelve-twenty
+
+# specify path to download to
+sunny yvetteyoung --path=~/Music
+```
+
+## CLI options
+
+```
+USAGE:
+    sunny [OPTIONS] <ARTIST | URL>
+
+ARGS:
+    <ARTIST | URL>
+            Artist's bandcamp username or full url
+
+OPTIONS:
+    -p, --path <PATH>
+
+            Directory path where downloads should be saved to.
+            By default files are saved in the current directory.
+
+    -t, --track-format <FORMAT>
+
+            Specify track format: default is '{num} - {track}'
+
+            available keys:
+                {num} - track number
+                {track} - track
+                {artist} - artist
+                {album} - album
+
+            usage:
+                -t='{num} - {track} - {album} {artist}'
+
+            expands to:
+                2 - ATrack - SomeAlbum SomeArtist
+
+            note that `.mp3` is appended automatically.
+
+        --dry-run
+            Do not do anything; just show what would happen
+
+    -h, --help
+            Print help information
+
+    -l, --list-available
+            list albums/tracks available to download
+
+    -s, --skip-albums <ALBUMS>...
+            Skip downloading these albums, note that albums need to be delimited by ','
+            eg: -s 'one,two' or --skip-albums='one,two'
+
+    -V, --version
+            Print version information
 ```
 
 <!-- ## Run tests
