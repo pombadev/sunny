@@ -245,3 +245,38 @@ pub fn tag_mp3(
 
     Ok(())
 }
+
+pub fn print_as_tree(albums: Vec<Album>) {
+    if albums.is_empty() {
+        println!("Noting to print");
+    } else {
+        let artist = &albums[0].artist;
+
+        println!("{}", artist);
+
+        for (album_index, album) in albums.iter().enumerate() {
+            let next_album = albums.get(album_index + 1);
+
+            let padding = if next_album.is_some() {
+                "├──"
+            } else {
+                "└──"
+            };
+
+            println!("  {padding} {}", album.album);
+
+            for (track_index, track) in album.tracks.iter().enumerate() {
+                let next_track = album.tracks.get(track_index + 1);
+                let bar = if next_album.is_some() { "│" } else { " " };
+
+                let padding = if next_track.is_some() {
+                    format!("  {bar}   ├──")
+                } else {
+                    format!("  {bar}   └──")
+                };
+
+                println!("{padding} {}", track.name);
+            }
+        }
+    }
+}

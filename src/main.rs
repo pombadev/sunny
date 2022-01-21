@@ -12,7 +12,7 @@ use sunny::{
     error,
     models::{Album, Track},
     spider::fetch_albums,
-    utils::{green_check, prepare_directory, red_cross, timestamp, worker},
+    utils::{green_check, prepare_directory, print_as_tree, red_cross, timestamp, worker},
 };
 
 fn main() {
@@ -28,6 +28,7 @@ fn app_main() -> error::Result<()> {
         track_format,
         dry_run,
         skip_albums,
+        list_available,
         ..
     } = cli::Config::default();
 
@@ -38,6 +39,12 @@ fn app_main() -> error::Result<()> {
     let spinner_style = ProgressStyle::default_spinner().template("{prefix} {spinner} {wide_msg}");
 
     let albums = fetch_albums(&url)?;
+
+    if list_available {
+        print_as_tree(albums);
+        return Ok(());
+    }
+
     let track_format = Arc::new(track_format.unwrap_or_else(String::new));
     let total_albums = albums.len();
 

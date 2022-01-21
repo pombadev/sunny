@@ -61,6 +61,10 @@ note that `.mp3` is appended automatically.
         require_delimiter = true
     )]
     pub(crate) skip_albums: Option<Vec<String>>,
+
+    /// list albums/tracks available to download
+    #[clap(short, long)]
+    pub(crate) list_available: bool,
 }
 
 impl Default for Config {
