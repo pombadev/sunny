@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use clap::Parser;
 use strfmt::strfmt;
@@ -102,8 +102,11 @@ fn from_str(input: &str) -> String {
 }
 
 pub fn expand_tilde(p: &str) -> PathBuf {
+    #[allow(deprecated)]
+    let home = env::home_dir().expect("").display().to_string();
+
     if p.starts_with('~') {
-        return PathBuf::from(p.replace('~', env!("HOME")));
+        return PathBuf::from(p.replace("~", home.as_str()));
     }
 
     PathBuf::from(p)
