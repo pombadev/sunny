@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{Path, PathBuf, MAIN_SEPARATOR},
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -39,19 +39,12 @@ pub fn client(url: impl AsRef<str>) -> RequestBuilder {
 
 pub fn prepare_directory(path: Option<&PathBuf>, album: &Album) -> Result<()> {
     let path = match path {
-        Some(path) => format!(
-            "{}{MAIN_SEPARATOR}{}{MAIN_SEPARATOR}{}",
-            path.display(),
-            &album.artist,
-            &album.album
-        ),
-        None => format!("{}{MAIN_SEPARATOR}{}", &album.artist, &album.album),
+        Some(path) => Path::new(path).join(&album.artist).join(&album.album),
+        None => Path::new(&album.artist).join(&album.album),
     };
 
-    let dir = Path::new(&path);
-
-    if !dir.exists() {
-        fs::create_dir_all(&dir)?;
+    if !path.exists() {
+        fs::create_dir_all(&path)?;
     }
 
     Ok(())
@@ -64,7 +57,7 @@ pub fn file_path(
     path: Arc<Option<PathBuf>>,
     track_format: Arc<String>,
 ) -> Result<PathBuf> {
-    let parent = format!("{}{MAIN_SEPARATOR}{}", &artist, &album);
+    let parent = Path::new(&artist.to_string()).join(&album.to_string());
 
     let file_name = if track_format.is_empty() {
         format!("{} - {}", &track.num, &track.name)
@@ -78,9 +71,9 @@ pub fn file_path(
     };
 
     let file = if let Some(ref path) = *path {
-        path.join(format!("{}{MAIN_SEPARATOR}{}.mp3", parent, file_name))
+        path.join(parent.join(file_name)).with_extension("mp3")
     } else {
-        PathBuf::from(format!("{}{MAIN_SEPARATOR}{}.mp3", parent, file_name))
+        parent.join(file_name).with_extension("mp3")
     };
 
     if file.exists() {
