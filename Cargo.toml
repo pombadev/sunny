@@ -1,33 +1,33 @@
 [package]
-name = "sunny"
-version = "0.3.0"
 authors = ["pjmp"]
-edition = "2021"
+categories = ["command-line-utilities"]
 description = """
 Tool to download free music from Bandcamp.
 Automatically organize files to folder, ID3 tags (including album art).
 """
-categories = ["command-line-utilities"]
-license = "MIT OR Apache-2.0"
-readme = "README.md"
-homepage = "https://docs.rs/crate/sunny"
-repository = "https://github.com/pjmp/sunny"
 documentation = "https://docs.rs/sunny"
+edition = "2021"
+homepage = "https://docs.rs/crate/sunny"
 keywords = ["bandcamp", "bandcamp-downloader", "bandcamp-dl", "sunny"]
+license = "MIT OR Apache-2.0"
+name = "sunny"
+readme = "README.md"
+repository = "https://github.com/pjmp/sunny"
+version = "0.3.0"
 
 [lib]
 path = "src/lib/mod.rs"
 
 [dependencies]
 async-std = "1.10.0"
-clap = { version = "3.0.7", features = ["derive"] }
+clap = {version = "3.1.0", features = ["derive"]}
 console = "0.15.0"
 gjson = "0.8.0"
 html-escape = "0.2.9"
-id3 = "1.0.1"
+id3 = "1.0.2"
 indicatif = "0.16.2"
 rayon = "1.5.1"
-scraper = { version = "0.12.0", features = [], default-features = false }
+scraper = {version = "0.12.0", features = [], default-features = false}
 strfmt = "0.1.6"
 surf = "2.3.2"
 # todo upgrade to latest version

@@ -58,7 +58,7 @@ note that `.mp3` is appended automatically.
         multiple_values = true,
         value_name = "ALBUMS",
         value_delimiter = ',',
-        require_delimiter = true
+        require_value_delimiter = true
     )]
     pub(crate) skip_albums: Option<Vec<String>>,
 
