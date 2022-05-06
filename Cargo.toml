@@ -19,15 +19,15 @@ version = "0.3.0"
 path = "src/lib/mod.rs"
 
 [dependencies]
-async-std = "1.10.0"
-clap = {version = "3.1.0", features = ["derive"]}
+async-std = "1.11.0"
+clap = {version = "3.1.16", features = ["derive"]}
 console = "0.15.0"
-gjson = "0.8.0"
-html-escape = "0.2.9"
+gjson = "0.8.1"
+html-escape = "0.2.11"
 id3 = "1.0.2"
 indicatif = "0.16.2"
-rayon = "1.5.1"
-scraper = {version = "0.12.0", features = [], default-features = false}
+rayon = "1.5.2"
+scraper = {version = "0.13.0", features = [], default-features = false}
 strfmt = "0.1.6"
 surf = "2.3.2"
 # todo upgrade to latest version
