@@ -106,7 +106,7 @@ pub fn expand_tilde(p: &str) -> PathBuf {
     let home = env::home_dir().expect("").display().to_string();
 
     if p.starts_with('~') {
-        return PathBuf::from(p.replace("~", home.as_str()));
+        return PathBuf::from(p.replace('~', home.as_str()));
     }
 
     PathBuf::from(p)

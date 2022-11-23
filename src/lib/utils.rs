@@ -234,7 +234,7 @@ pub fn tag_mp3(
         tag.set_date_recorded(ts);
     }
 
-    tag.write_to_path(&path, Version::Id3v24)?;
+    tag.write_to_path(path, Version::Id3v24)?;
 
     Ok(())
 }
