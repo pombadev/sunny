@@ -45,7 +45,7 @@ fn app_main() -> error::Result<()> {
         return Ok(());
     }
 
-    let track_format = Arc::new(track_format.unwrap_or_else(String::new));
+    let track_format = Arc::new(track_format.unwrap_or_default());
     let total_albums = albums.len();
 
     albums
@@ -92,11 +92,11 @@ fn app_main() -> error::Result<()> {
                     pb.set_style(spinner_style.clone());
 
                     let album = Arc::new(album.clone());
-                    let album_art_url = Arc::new(album_art_url.clone().unwrap_or_else(String::new));
+                    let album_art_url = Arc::new(album_art_url.clone().unwrap_or_default());
                     let artist = Arc::new(artist.clone());
                     let path = Arc::new(path.clone());
                     let pb = Arc::new(pb);
-                    let tags = Arc::new(tags.clone().unwrap_or_else(String::new));
+                    let tags = Arc::new(tags.clone().unwrap_or_default());
                     let track_format = Arc::clone(&track_format);
                     let track = Track { ..track.to_owned() };
 

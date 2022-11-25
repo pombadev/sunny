@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    env::consts,
     fs,
     path::{Path, PathBuf},
     sync::Arc,
@@ -20,9 +21,6 @@ use crate::{
     models::{Album, Track},
 };
 
-/// Apple Safari User Agent string
-pub const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15";
-
 pub fn red_cross() -> String {
     style("✘").bold().red().to_string()
 }
@@ -32,8 +30,16 @@ pub fn green_check() -> String {
 }
 
 pub fn client(url: impl AsRef<str>) -> RequestBuilder {
+    let ua = format!(
+        "{}/{} ({}, {})",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+        consts::OS,
+        consts::ARCH,
+    );
+
     surf::get(url)
-        .header("User-Agent", USER_AGENT)
+        .header("User-Agent", ua)
         .middleware(Redirect::default())
 }
 
