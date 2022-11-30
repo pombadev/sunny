@@ -1,8 +1,5 @@
 //! Sunny is a library for scraping bandcamp.com
 
-/// Errors produced by sunny
-pub mod error;
-
 /// Track & Album represented as structs
 pub mod models;
 
@@ -11,3 +8,6 @@ pub mod spider;
 
 /// Miscellaneous small utilities for mostly internal usage
 pub mod utils;
+
+/// Download multiple tracks simultaneously
+pub mod multi_dl;

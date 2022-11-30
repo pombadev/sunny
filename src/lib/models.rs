@@ -35,7 +35,7 @@ impl Track {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Default, Debug)]
 pub struct Album {
     pub artist: String,
     pub album: String,

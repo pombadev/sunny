@@ -1,11 +1,12 @@
-use async_std::task;
+use std::time::Duration;
+
+use anyhow::{anyhow, bail, Result};
 use html_escape::decode_html_entities;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use scraper::{Html, Selector};
 
 use crate::{
-    error::{Error, Result},
     models::{Album, Track},
     utils::{client, green_check, red_cross},
 };
@@ -66,8 +67,29 @@ fn scrape_by_application_ld_json(dom: &Html) -> Option<Album> {
 
     const FILE_PATH: &str = "additionalProperty.#(name=file_mp3-128).value";
 
-    // case when current url is an album
-    album.tracks = if !tracks.array().is_empty() {
+    // case when current url is just a track
+    album.tracks = if tracks.array().is_empty() {
+        let mut url = decode_html_entities(&item.get(FILE_PATH).to_string()).to_string();
+        let track_name = item.get("name");
+
+        if url.is_empty() {
+            if let Some(track_url) = find_track_by_name(dom, &track_name) {
+                url = track_url.url;
+            } else {
+                // no url is found for the track's file
+                // eprintln!("No downloadable url found for '{}', skipping.", &track_name);
+                return None;
+            }
+        }
+
+        vec![Track {
+            num: 1,
+            name: track_name.to_string(),
+            url,
+            lyrics: None,
+        }]
+    } else {
+        // case when current url is an album
         tracks
             .array()
             .iter()
@@ -94,27 +116,6 @@ fn scrape_by_application_ld_json(dom: &Html) -> Option<Album> {
                 })
             })
             .collect()
-    } else {
-        // case when current url is just a track
-        let mut url = decode_html_entities(&item.get(FILE_PATH).to_string()).to_string();
-        let track_name = item.get("name");
-
-        if url.is_empty() {
-            if let Some(track_url) = find_track_by_name(dom, &track_name) {
-                url = track_url.url;
-            } else {
-                // no url is found for the track's file
-                // eprintln!("No downloadable url found for '{}', skipping.", &track_name);
-                return None;
-            }
-        }
-
-        vec![Track {
-            num: 1,
-            name: track_name.to_string(),
-            url,
-            lyrics: None,
-        }]
     };
 
     Some(album)
@@ -127,7 +128,7 @@ fn scrape_by_data_tralbum(dom: &Html) -> Album {
 
     let mut album = Album::default();
 
-    for (name, val) in element.value().attrs.iter() {
+    for (name, val) in &element.value().attrs {
         let data = gjson::get(val.trim(), "@this");
 
         if &name.local == "data-embed" {
@@ -187,15 +188,8 @@ fn get_album(dom: &Html) -> Option<Album> {
 
 /// Get [`Html`] of a page.
 fn fetch_html(url: &str) -> Result<Html> {
-    let mut res = task::block_on(client(url)).map_err(|e| Error::Http(e.to_string()))?;
-
-    let status = &res.status();
-
-    if *status == surf::StatusCode::NotFound {
-        return Err(Error::Http(status.canonical_reason().to_string()));
-    }
-
-    let body = task::block_on(res.body_string()).map_err(|e| Error::Http(e.to_string()))?;
+    let body = client(url)?;
+    let body = String::from_utf8(body)?;
 
     Ok(Html::parse_document(body.as_ref()))
 }
@@ -203,20 +197,18 @@ fn fetch_html(url: &str) -> Result<Html> {
 /// Fetch albums
 pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
     let pb = ProgressBar::new_spinner();
-    pb.set_style(ProgressStyle::default_spinner().template("{spinner} {prefix} {msg} ({elapsed})"));
-    pb.enable_steady_tick(100);
+    pb.set_style(
+        ProgressStyle::default_spinner().template("{spinner} {prefix} {msg} ({elapsed})")?,
+    );
+    pb.enable_steady_tick(Duration::from_millis(100));
     pb.set_prefix("Fetching artist's info");
 
     let html = fetch_html(url).map_err(|err| {
         pb.finish_with_message(red_cross());
-        Error::Http(err.to_string())
+        anyhow!("{err}")
     })?;
 
-    #[rustfmt::skip]
-    let is_album = html
-        .select(&Selector::parse("#trackInfo")
-        .map_err(|err| Error::Scrape(format!("{:?}", &err)))?)
-        .count() > 0;
+    let is_album = html.select(&Selector::parse("#trackInfo").unwrap()).count() > 0;
 
     if is_album {
         let album = get_album(&html);
@@ -228,8 +220,7 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
 
     #[rustfmt::skip]
     let is_discography = html
-        .select(&Selector::parse("#music-grid")
-        .map_err(|err| Error::Scrape(format!("{:?}", &err)))?)
+        .select(&Selector::parse("#music-grid").unwrap())
         .count() > 0;
 
     if is_discography {
@@ -250,5 +241,5 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
     }
 
     // this should never reach, however if it does throw an error.
-    Err(Error::Http("Invalid page.".to_owned()))
+    bail!("Invalid page.")
 }

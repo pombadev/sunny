@@ -2,19 +2,18 @@ use std::{env, path::PathBuf};
 
 use clap::Parser;
 use strfmt::strfmt;
-use surf::Url;
-
 use sunny::utils::format_container;
+use url::Url;
 
 #[derive(Debug, Parser)]
 #[clap(about, version, after_help = "note: run --help to see more details")]
 pub struct Config {
     /// Artist's bandcamp username or full url
-    #[clap(display_order = 1, parse(from_str = from_str), value_name = "ARTIST | URL")]
+    #[clap(display_order = 1, value_parser = parse_url, value_name = "ARTIST | URL")]
     pub(crate) url: String,
 
     /// Directory path where downloads should be saved to
-    #[clap(short, long, display_order = 2, validator = validate_path, parse(from_str = expand_tilde), long_help = r"
+    #[clap(short, long, display_order = 2, value_parser = validate_path, long_help = r"
 Directory path where downloads should be saved to.
 By default files are saved in the current directory.
 ")]
@@ -29,7 +28,7 @@ By default files are saved in the current directory.
         display_order = 100,
         short,
         long,
-        validator = validate_format,
+        value_parser = validate_format,
         value_name = "FORMAT",
         long_help = r"
 Specify track format: default is '{num} - {track}'
@@ -44,22 +43,15 @@ usage:
     -t='{num} - {track} - {album} {artist}'
 
 expands to:
-    2 - ATrack - SomeAlbum SomeArtist
+    2 - Track - Album Artist
 
 note that `.mp3` is appended automatically.
 ")]
     pub(crate) track_format: Option<String>,
 
     /// Skip downloading these albums, note that albums need to be delimited by ','
-    /// eg: -s 'one,two' or --skip-albums='one,two'
-    #[clap(
-        short,
-        long,
-        multiple_values = true,
-        value_name = "ALBUMS",
-        value_delimiter = ',',
-        require_value_delimiter = true
-    )]
+    /// eg: -s 'one,two' or --skip-albums=one,two
+    #[clap(short, long, value_name = "ALBUMS", value_delimiter = ',')]
     pub(crate) skip_albums: Option<Vec<String>>,
 
     /// list albums/tracks available to download
@@ -75,38 +67,35 @@ impl Default for Config {
 
 fn validate_format(f: &str) -> Result<String, String> {
     let vars = format_container(
-        "".to_string(),
-        "".to_string(),
-        "".to_string(),
-        "".to_string(),
+        &String::new(),
+        &String::new(),
+        &String::new(),
+        &String::new(),
     );
 
     strfmt(f, &vars).map_err(|err| err.to_string())
 }
 
-fn from_str(input: &str) -> String {
+fn parse_url(input: &str) -> Result<String, String> {
     match Url::parse(input) {
-        Ok(url) => url.to_string(),
+        Ok(url) => Ok(url.into()),
         // assuming that user has passed just the artist name
         Err(err) => {
-            if err.to_string() == "relative URL without a base" {
-                return match Url::parse(&format!("https://{}.bandcamp.com/music", input)) {
-                    Ok(u) => u.to_string(),
-                    _ => input.to_string(),
-                };
+            if err == url::ParseError::RelativeUrlWithoutBase {
+                return Ok(format!("https://{input}.bandcamp.com/music"));
             }
 
-            input.to_string()
+            Err(err.to_string())
         }
     }
 }
 
 pub fn expand_tilde(p: &str) -> PathBuf {
     #[allow(deprecated)]
-    let home = env::home_dir().expect("").display().to_string();
+    let home = env::home_dir().expect("home_dir to exist");
 
     if p.starts_with('~') {
-        return PathBuf::from(p.replace('~', home.as_str()));
+        return PathBuf::from(p.replace('~', &home.to_string_lossy()));
     }
 
     PathBuf::from(p)

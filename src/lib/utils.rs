@@ -3,23 +3,18 @@ use std::{
     env::consts,
     fs,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
-use async_std::task;
+use anyhow::{bail, Result};
 use console::style;
+use curl::{easy, Version as CurlVersion};
 use id3::{
     frame::{Lyrics, Picture, PictureType},
     Tag, TagLike, Timestamp, Version,
 };
 use strfmt::strfmt;
-use surf::{middleware::Redirect, RequestBuilder};
-use time::Date;
 
-use crate::{
-    error::{Error, Result},
-    models::{Album, Track},
-};
+use super::models::{Album, Track};
 
 pub fn red_cross() -> String {
     style("✘").bold().red().to_string()
@@ -29,90 +24,117 @@ pub fn green_check() -> String {
     style("✔").bold().green().to_string()
 }
 
-pub fn client(url: impl AsRef<str>) -> RequestBuilder {
+pub(crate) fn client(url: &str) -> Result<Vec<u8>> {
+    let mut buf = Vec::new();
+
+    let mut handle = easy::Easy::new();
+
     let ua = format!(
-        "{}/{} ({}, {})",
+        "{}/{} ({}, {}) curl/{}",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
         consts::OS,
         consts::ARCH,
+        CurlVersion::get().version()
     );
 
-    surf::get(url)
-        .header("User-Agent", ua)
-        .middleware(Redirect::default())
+    handle.useragent(&ua)?;
+
+    handle.url(url)?;
+
+    let mut transfer = handle.transfer();
+
+    transfer.write_function(|data| {
+        buf.extend_from_slice(data);
+        Ok(data.len())
+    })?;
+
+    transfer.perform()?;
+
+    drop(transfer);
+
+    Ok(buf)
 }
 
-pub fn prepare_directory(path: Option<&PathBuf>, album: &Album) -> Result<()> {
+pub fn prepare_directory(path: Option<&PathBuf>, album: &Album) -> Result<PathBuf> {
     let path = match path {
-        Some(path) => Path::new(path).join(&album.artist).join(&album.album),
-        None => Path::new(&album.artist).join(&album.album),
-    };
+        Some(path) => Path::new(path).join(&album.artist),
+        None => PathBuf::from(&album.artist),
+    }
+    .join(&album.album);
 
     if !path.exists() {
         fs::create_dir_all(&path)?;
     }
 
-    Ok(())
+    Ok(path)
 }
 
-pub fn file_path(
-    album: Arc<String>,
-    artist: Arc<String>,
+pub(crate) fn make_path(
+    album: &String,
+    artist: &String,
     track: &Track,
-    path: Arc<Option<PathBuf>>,
-    track_format: Arc<String>,
-) -> Result<PathBuf> {
-    let parent = Path::new(&artist.to_string()).join(&album.to_string());
-
+    root: &Path,
+    track_format: &String,
+) -> PathBuf {
     let file_name = if track_format.is_empty() {
         format!("{} - {}", &track.num, &track.name)
     } else {
-        parse_track_template(
-            &track_format,
-            Arc::clone(&album),
-            Arc::clone(&artist),
-            track,
-        )
+        parse_track_template(track_format, album, artist, track)
     };
 
-    let file = if let Some(ref path) = *path {
-        path.join(parent.join(file_name)).with_extension("mp3")
+    root.join(file_name).with_extension("mp3")
+}
+
+pub(crate) fn file_path(
+    album: &String,
+    artist: &String,
+    track: &Track,
+    root: &Path,
+    track_format: &String,
+) -> Result<PathBuf> {
+    let file_name = if track_format.is_empty() {
+        format!("{} - {}", &track.num, &track.name)
     } else {
-        parent.join(file_name).with_extension("mp3")
+        parse_track_template(track_format, album, artist, track)
     };
+
+    let file = root.join(file_name).with_extension("mp3");
 
     if file.exists() {
-        return Err(Error::FileExist(file.display().to_string()));
+        bail!("{} already exist", file.display())
     }
 
     Ok(file)
 }
 
 pub fn timestamp(date_string: &str) -> Option<Timestamp> {
+    use chrono::prelude::*;
+
     // if String looks like this `28 Sep 2014 04:19:31 GMT`
-    match Date::parse(date_string, "%d %b %Y") {
+    match Utc.datetime_from_str(date_string, "%d %b %Y %T %Z") {
         Ok(date) => Some(Timestamp {
             year: date.year(),
-            month: Some(date.month()),
-            day: Some(date.day()),
-            hour: None,
-            minute: None,
-            second: None,
+            month: Some(date.month() as u8),
+            day: Some(date.day() as u8),
+            hour: Some(date.hour() as u8),
+            minute: Some(date.minute() as u8),
+            second: Some(date.second() as u8),
         }),
         Err(_) => {
             // if String looks like this `released September 28, 2014`
             if date_string.starts_with("released ") {
-                let date_string = date_string.replace("released ", "");
+                let mut date_string = date_string.to_owned();
+                date_string.push_str(" 01:01:01");
 
-                match Date::parse(date_string, "%d %b %Y") {
+                match Utc.datetime_from_str(&date_string, "released %B %d, %Y %T") {
                     Ok(date) => Some(Timestamp {
                         year: date.year(),
-                        month: Some(date.month()),
-                        day: Some(date.day()),
-                        hour: None,
-                        minute: None,
-                        second: None,
+                        month: Some(date.month() as u8),
+                        day: Some(date.day() as u8),
+                        hour: Some(date.hour() as u8),
+                        minute: Some(date.minute() as u8),
+                        second: Some(date.second() as u8),
                     }),
                     Err(_) => None,
                 }
@@ -124,84 +146,34 @@ pub fn timestamp(date_string: &str) -> Option<Timestamp> {
 }
 
 pub fn format_container(
-    num: String,
-    track: String,
-    album: String,
-    artist: String,
+    num: &String,
+    track: &String,
+    album: &String,
+    artist: &String,
 ) -> HashMap<String, String> {
     HashMap::from([
-        ("num".to_string(), num),
-        ("track".to_string(), track),
-        ("album".to_string(), album),
-        ("artist".to_string(), artist),
+        ("num".to_string(), num.to_owned()),
+        ("track".to_string(), track.to_owned()),
+        ("album".to_string(), album.to_owned()),
+        ("artist".to_string(), artist.to_owned()),
     ])
 }
 
 pub fn parse_track_template(
     format: &str,
-    album: Arc<String>,
-    artist: Arc<String>,
+    album: &String,
+    artist: &String,
     track: &Track,
 ) -> String {
     let Track { ref num, name, .. } = track;
-    let vars = format_container(
-        num.to_string(),
-        String::from(name),
-        album.to_string(),
-        artist.to_string(),
-    );
+    let vars = format_container(&num.to_string(), name, album, artist);
 
     // we can do this because we validate user's input
     strfmt(format, &vars).expect("failed to format keys")
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn worker(
-    album: Arc<String>,
-    artist: Arc<String>,
-    tags: Arc<String>,
-    album_art_url: Arc<String>,
-    release_date: Option<id3::Timestamp>,
-    track: Track,
-    path: Arc<Option<PathBuf>>,
-    track_format: Arc<String>,
-) -> Result<()> {
-    let path = file_path(
-        Arc::clone(&album),
-        Arc::clone(&artist),
-        &track,
-        path,
-        track_format,
-    )?;
-
-    if track.url.is_empty() {
-        // eprintln!("Track url is empty, skipping");
-        return Ok(());
-    }
-
-    let res = task::block_on(client(&track.url).recv_bytes())?;
-
-    let mut file = task::block_on(async_std::fs::File::create(&path))?;
-
-    task::block_on(async_std::io::copy(&mut res.as_slice(), &mut file))?;
-
-    let album_art = if album_art_url.is_empty() {
-        None
-    } else {
-        Some(task::block_on(
-            client(album_art_url.to_string()).recv_bytes(),
-        )?)
-    };
-
-    tag_mp3(album, artist, tags, album_art, release_date, &track, &path)?;
-
-    Ok(())
-}
-
 pub fn tag_mp3(
-    album: Arc<String>,
-    artist: Arc<String>,
-    tags: Arc<String>,
+    album: &Album,
     album_art: Option<Vec<u8>>,
     release_date: Option<id3::Timestamp>,
     track: &Track,
@@ -211,9 +183,9 @@ pub fn tag_mp3(
 
     tag.set_title(&*track.name);
     tag.set_track(track.num as u32);
-    tag.set_album(&*album);
-    tag.set_artist(&*artist);
-    tag.set_album_artist(&*artist);
+    tag.set_album(&album.album);
+    tag.set_artist(&album.artist);
+    tag.set_album_artist(&album.artist);
 
     if let Some(ref lyrics) = track.lyrics {
         tag.add_frame(Lyrics {
@@ -223,7 +195,7 @@ pub fn tag_mp3(
         });
     }
 
-    if !tags.is_empty() {
+    if let Some(tags) = &album.tags {
         tag.set_genre(tags.to_string());
     }
 

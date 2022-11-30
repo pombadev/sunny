@@ -1,9 +1,11 @@
 {
     "cSpell.words": [
         "bandcamp",
+        "consts",
         "customizability",
         "daysofstatic",
         "gjson",
+        "indicatif",
         "KHTML",
         "parallelly",
         "rustfmt",
