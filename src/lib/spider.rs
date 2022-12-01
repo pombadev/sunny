@@ -9,8 +9,9 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use scraper::{Html, Selector};
 
 use crate::{
+    client,
     models::{Album, Track},
-    utils::{client, green_check, red_cross, Client},
+    utils::{green_check, red_cross},
 };
 
 fn find_track_by_name(dom: &Html, track_name: &gjson::Value) -> Option<Track> {
@@ -190,7 +191,7 @@ fn get_album(dom: &Html) -> Option<Album> {
 
 /// Get [`Html`] of a page.
 fn fetch_html(url: &str) -> Result<Html> {
-    let body = client(url)?;
+    let body = client::get(url)?;
     let body = String::from_utf8(body)?;
 
     Ok(Html::parse_document(body.as_ref()))
@@ -252,7 +253,7 @@ pub fn search(query: &str, query_type: &str) -> Result<()> {
     );
 
     let mut handle =
-        Client::handle("https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic")?;
+        client::handle("https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic")?;
 
     let mut headers = List::new();
 
@@ -261,7 +262,7 @@ pub fn search(query: &str, query_type: &str) -> Result<()> {
     handle.post(true)?;
     handle.post_fields_copy(data.as_bytes())?;
 
-    let response = Client::send(handle)?;
+    let response = client::send(handle)?;
     let json = unsafe { gjson::get_bytes(response.as_slice(), "auto.results") };
 
     use term_table::{

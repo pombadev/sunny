@@ -9,5 +9,5 @@ pub mod spider;
 /// Miscellaneous small utilities for mostly internal usage
 pub mod utils;
 
-/// Download multiple tracks simultaneously
-pub mod multi_dl;
+/// Client to download single or multiple items
+pub mod client;

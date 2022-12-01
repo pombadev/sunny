@@ -9,8 +9,9 @@ use curl::multi::{Easy2Handle, Multi};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use crate::{
+    client::{self, user_agent},
     models::{Album, Track},
-    utils::{client, file_path, make_path, tag_mp3, timestamp},
+    utils::{file_path, make_path, tag_mp3, timestamp},
 };
 
 type Config<'a> = (&'a Track, &'a Album, PathBuf);
@@ -107,7 +108,7 @@ impl<'a> Downloader<'a> {
                         let album_art = if album_art_url.is_empty() {
                             None
                         } else {
-                            Some(client(&album_art_url).unwrap())
+                            Some(client::get(&album_art_url).unwrap())
                         };
 
                         tag_mp3(
@@ -138,7 +139,6 @@ impl<'a> Downloader<'a> {
     }
 
     fn download(&'a self, token: usize, track: Config<'a>) -> Result<Easy2Handle<Collector>> {
-        let version = curl::Version::get();
         let pb = self.progress_meter.add(ProgressBar::new(0).with_style(
             ProgressStyle::with_template(
                 "[{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta}) {msg}",
@@ -146,15 +146,15 @@ impl<'a> Downloader<'a> {
             .progress_chars("#>-"),
         ));
         let url = track.0.url.clone();
-
         let mut request = Easy2::new(Collector(Vec::new(), pb, track));
+
         request.url(url.as_str())?;
-        request.useragent(&format!("curl/{}", version.version()))?;
+        request.useragent(&user_agent())?;
         request.progress(true)?;
 
         let mut handle = self.client.add2(request)?;
-
         handle.set_token(token)?;
+
         Ok(handle)
     }
 }

@@ -3,7 +3,7 @@ mod cli;
 use std::process::exit;
 
 use sunny::{
-    multi_dl,
+    client,
     spider::{fetch_albums, search as Search},
     utils::{prepare_directory, print_as_tree},
 };
@@ -77,7 +77,7 @@ fn app_main() -> anyhow::Result<()> {
         })
         .collect();
 
-    multi_dl::Downloader::run(tracks, track_format.as_ref())?;
+    client::MultiDownloader::run(tracks, track_format.as_ref())?;
 
     Ok(())
 }
