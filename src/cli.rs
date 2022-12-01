@@ -1,37 +1,32 @@
 use std::{env, path::PathBuf};
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use strfmt::strfmt;
 use sunny::utils::format_container;
-use url::Url;
 
 #[derive(Debug, Parser)]
-#[clap(about, version, after_help = "note: run --help to see more details")]
+#[clap(
+    about,
+    version,
+    after_help = "Note: run --help to see full descriptions of each flags/options"
+)]
 pub struct Config {
     /// Artist's bandcamp username or full url
-    #[clap(display_order = 1, value_parser = parse_url, value_name = "ARTIST | URL")]
+    #[clap(display_order = 1, value_parser, value_name = "ARTIST | URL")]
     pub(crate) url: String,
 
     /// Directory path where downloads should be saved to
-    #[clap(short, long, display_order = 2, value_parser = validate_path, long_help = r"
-Directory path where downloads should be saved to.
-By default files are saved in the current directory.
-")]
+    #[clap(short, long, display_order = 2, value_parser = validate_path, long_help = r"Directory path where downloads should be saved to.
+By default files are saved in the current directory.")]
     pub(crate) path: Option<PathBuf>,
-
-    /// Do not do anything; just show what would happen
-    #[clap(long)]
-    pub(crate) dry_run: bool,
 
     /// Specify track format
     #[clap(
-        display_order = 100,
         short,
         long,
         value_parser = validate_format,
         value_name = "FORMAT",
-        long_help = r"
-Specify track format: default is '{num} - {track}'
+        long_help = r"Specify track format: default is '{num} - {track}'
 
 available keys:
     {num} - track number
@@ -45,18 +40,51 @@ usage:
 expands to:
     2 - Track - Album Artist
 
-note that `.mp3` is appended automatically.
-")]
+note that `.mp3` is appended automatically.")]
     pub(crate) track_format: Option<String>,
 
     /// Skip downloading these albums, note that albums need to be delimited by ','
     /// eg: -s 'one,two' or --skip-albums=one,two
-    #[clap(short, long, value_name = "ALBUMS", value_delimiter = ',')]
+    #[clap(short = 'S', long, value_name = "ALBUMS", value_delimiter = ',')]
     pub(crate) skip_albums: Option<Vec<String>>,
 
-    /// list albums/tracks available to download
+    /// List albums/tracks available for download
     #[clap(short, long)]
     pub(crate) list_available: bool,
+
+    /// Search artist, album, label, track or all, instead of downloading
+    #[clap(short, long)]
+    pub(crate) search: bool,
+
+    /// Specify type to search for, available only for `--search` flag
+    #[clap(long = "type", short = 'T', default_value_t = SearchType::Artists, requires = "search")]
+    #[arg(value_enum)]
+    pub(crate) r#type: SearchType,
+
+    /// Do not do anything; just show what would happen
+    #[clap(display_order = 1000, long)]
+    pub(crate) dry_run: bool,
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+pub(crate) enum SearchType {
+    All,
+    Artists,
+    Labels,
+    Albums,
+    Tracks,
+}
+
+impl SearchType {
+    pub(crate) fn as_search_filter(&self) -> &str {
+        match self {
+            Self::All => "",
+            Self::Artists => "b",
+            Self::Labels => "b",
+            Self::Albums => "a",
+            Self::Tracks => "t",
+        }
+    }
 }
 
 impl Default for Config {
@@ -74,20 +102,6 @@ fn validate_format(f: &str) -> Result<String, String> {
     );
 
     strfmt(f, &vars).map_err(|err| err.to_string())
-}
-
-fn parse_url(input: &str) -> Result<String, String> {
-    match Url::parse(input) {
-        Ok(url) => Ok(url.into()),
-        // assuming that user has passed just the artist name
-        Err(err) => {
-            if err == url::ParseError::RelativeUrlWithoutBase {
-                return Ok(format!("https://{input}.bandcamp.com/music"));
-            }
-
-            Err(err.to_string())
-        }
-    }
 }
 
 pub fn expand_tilde(p: &str) -> PathBuf {

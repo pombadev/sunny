@@ -1,14 +1,31 @@
 mod cli;
 
+use std::process::exit;
+
 use sunny::{
     multi_dl,
-    spider::fetch_albums,
+    spider::{fetch_albums, search as Search},
     utils::{prepare_directory, print_as_tree},
 };
 
 fn main() {
     if let Err(e) = app_main() {
-        eprintln!("{e}")
+        eprintln!("Error: {e}");
+        exit(1)
+    }
+}
+
+fn parse_url(input: &str) -> anyhow::Result<String> {
+    match url::Url::parse(input) {
+        Ok(url) => Ok(url.into()),
+        // assuming that user has passed just the artist name
+        Err(err) => {
+            if err == url::ParseError::RelativeUrlWithoutBase {
+                return Ok(format!("https://{input}.bandcamp.com/music"));
+            }
+
+            Err(err.into())
+        }
     }
 }
 
@@ -20,8 +37,18 @@ fn app_main() -> anyhow::Result<()> {
         // dry_run,
         skip_albums,
         list_available,
+        search,
+        r#type,
         ..
     } = cli::Config::default();
+
+    if search {
+        Search(&url, r#type.as_search_filter())?;
+
+        return Ok(());
+    }
+
+    let url = parse_url(&url)?;
 
     let albums = fetch_albums(&url)?;
 

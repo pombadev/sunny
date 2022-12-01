@@ -1,6 +1,8 @@
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Result};
+use console::style;
+use curl::easy::List;
 use html_escape::decode_html_entities;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -8,7 +10,7 @@ use scraper::{Html, Selector};
 
 use crate::{
     models::{Album, Track},
-    utils::{client, green_check, red_cross},
+    utils::{client, green_check, red_cross, Client},
 };
 
 fn find_track_by_name(dom: &Html, track_name: &gjson::Value) -> Option<Track> {
@@ -242,4 +244,63 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
 
     // this should never reach, however if it does throw an error.
     bail!("Invalid page.")
+}
+
+pub fn search(query: &str, query_type: &str) -> Result<()> {
+    let data = format!(
+        r#"{{"search_text":"{query}","search_filter":"{query_type}","full_page":true,"fan_id":null}}"#
+    );
+
+    let mut handle =
+        Client::handle("https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic")?;
+
+    let mut headers = List::new();
+
+    headers.append("Content-Type: application/json")?;
+    handle.http_headers(headers)?;
+    handle.post(true)?;
+    handle.post_fields_copy(data.as_bytes())?;
+
+    let response = Client::send(handle)?;
+    let json = unsafe { gjson::get_bytes(response.as_slice(), "auto.results") };
+
+    use term_table::{
+        row::Row,
+        table_cell::{Alignment, TableCell},
+        Table, TableStyle,
+    };
+
+    let mut table = Table::new();
+
+    table.style = TableStyle::blank();
+
+    table.separate_rows = false;
+
+    table.add_row(Row::new(vec![
+        TableCell::new_with_alignment(style("Name").bold().underlined(), 1, Alignment::Left),
+        TableCell::new_with_alignment(style("Location").bold().underlined(), 1, Alignment::Left),
+        TableCell::new_with_alignment(style("Genre").bold().underlined(), 1, Alignment::Left),
+        TableCell::new_with_alignment(style("Url").bold().underlined(), 1, Alignment::Left),
+    ]));
+
+    let mut items = json.array();
+
+    items.sort_by_key(|a| a.get("name").to_string());
+
+    for item in items {
+        table.add_row(Row::new(vec![
+            TableCell::new_with_alignment(item.get("name").to_string(), 1, Alignment::Left),
+            TableCell::new_with_alignment(
+                item.get("item_url_root").to_string(),
+                1,
+                Alignment::Left,
+            ),
+            TableCell::new_with_alignment(item.get("location").to_string(), 1, Alignment::Left),
+            TableCell::new_with_alignment(item.get("genre_name").to_string(), 1, Alignment::Left),
+        ]));
+    }
+
+    print!("{}", table.render().trim());
+
+    Ok(())
 }

@@ -24,6 +24,60 @@ pub fn green_check() -> String {
     style("✔").bold().green().to_string()
 }
 
+pub struct Client;
+
+impl Client {
+    pub fn handle(url: &str) -> Result<easy::Easy> {
+        let mut handle = easy::Easy::new();
+
+        let ua = format!(
+            "{}/{} ({}, {}) curl/{}",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION"),
+            consts::OS,
+            consts::ARCH,
+            CurlVersion::get().version()
+        );
+
+        handle.useragent(&ua)?;
+
+        handle.url(url)?;
+
+        Ok(handle)
+    }
+
+    pub fn send(mut handle: easy::Easy) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
+
+        let mut transfer = handle.transfer();
+
+        transfer.write_function(|data| {
+            buf.extend_from_slice(data);
+            Ok(data.len())
+        })?;
+
+        transfer.perform()?;
+
+        drop(transfer);
+
+        Ok(buf)
+    }
+
+    pub fn get(url: &str) -> Result<Vec<u8>> {
+        let handle = Client::handle(url)?;
+        Client::send(handle)
+    }
+
+    pub fn post(url: &str, data: &[u8]) -> Result<Vec<u8>> {
+        let mut handle = Client::handle(url)?;
+
+        handle.post(true)?;
+        handle.post_fields_copy(data)?;
+
+        Client::send(handle)
+    }
+}
+
 pub(crate) fn client(url: &str) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
 

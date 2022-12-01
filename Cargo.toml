@@ -1,10 +1,8 @@
 [package]
 authors = ["pjmp"]
 categories = ["command-line-utilities"]
-description = """
-Tool to download free music from Bandcamp.
-Automatically organize files to folder, ID3 tags (including album art).
-"""
+description = """Tool to download free music from Bandcamp.
+Automatically organize files to folder, ID3 tags (including album art)."""
 documentation = "https://docs.rs/sunny"
 edition = "2021"
 homepage = "https://docs.rs/crate/sunny"
@@ -38,4 +36,10 @@ indicatif = "0.17.2"
 rayon = "1.6.0"
 scraper = {version = "0.13.0", default-features = false}
 strfmt = "0.2.2"
+term-table = "1.3.2"
 url = "2.3.1"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+strip = true
