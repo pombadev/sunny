@@ -286,18 +286,18 @@ pub fn search(query: &str, query_type: &str) -> Result<()> {
 
     let mut items = json.array();
 
-    items.sort_by_key(|a| a.get("name").to_string());
+    items.sort_by_key(|item| item.get("name").str().to_lowercase());
 
     for item in items {
         table.add_row(Row::new(vec![
             TableCell::new_with_alignment(item.get("name").to_string(), 1, Alignment::Left),
+            TableCell::new_with_alignment(item.get("location").to_string(), 1, Alignment::Left),
+            TableCell::new_with_alignment(item.get("genre_name").to_string(), 1, Alignment::Left),
             TableCell::new_with_alignment(
                 item.get("item_url_root").to_string(),
                 1,
                 Alignment::Left,
             ),
-            TableCell::new_with_alignment(item.get("location").to_string(), 1, Alignment::Left),
-            TableCell::new_with_alignment(item.get("genre_name").to_string(), 1, Alignment::Left),
         ]));
     }
 

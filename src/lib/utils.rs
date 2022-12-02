@@ -156,7 +156,7 @@ pub fn tag_mp3(
     if let Some(ref lyrics) = track.lyrics {
         tag.add_frame(Lyrics {
             lang: "eng".to_string(),
-            description: "".to_string(),
+            description: String::with_capacity(0),
             text: String::from(lyrics.as_str()),
         });
     }
@@ -169,7 +169,7 @@ pub fn tag_mp3(
         tag.add_frame(Picture {
             mime_type: "image/jpeg".to_string(),
             picture_type: PictureType::CoverFront,
-            description: "".to_string(),
+            description: String::with_capacity(0),
             data: album_art,
         });
     }
@@ -183,7 +183,7 @@ pub fn tag_mp3(
     Ok(())
 }
 
-pub fn print_as_tree(albums: Vec<Album>) {
+pub fn print_as_tree(albums: &[Album]) {
     if albums.is_empty() {
         println!("Noting to print");
     } else {

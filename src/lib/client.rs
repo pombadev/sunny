@@ -24,6 +24,7 @@ pub fn handle(url: &str) -> Result<easy::Easy> {
 
     handle.useragent(&user_agent())?;
     handle.url(url)?;
+    handle.follow_location(true)?;
 
     Ok(handle)
 }

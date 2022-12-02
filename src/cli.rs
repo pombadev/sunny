@@ -67,7 +67,7 @@ note that `.mp3` is appended automatically.")]
 }
 
 #[derive(ValueEnum, Clone, Debug)]
-pub(crate) enum SearchType {
+pub enum SearchType {
     All,
     Artists,
     Labels,
@@ -76,11 +76,10 @@ pub(crate) enum SearchType {
 }
 
 impl SearchType {
-    pub(crate) fn as_search_filter(&self) -> &str {
+    pub(crate) const fn as_search_filter(&self) -> &str {
         match self {
             Self::All => "",
-            Self::Artists => "b",
-            Self::Labels => "b",
+            Self::Artists | Self::Labels => "b",
             Self::Albums => "a",
             Self::Tracks => "t",
         }
@@ -89,7 +88,7 @@ impl SearchType {
 
 impl Default for Config {
     fn default() -> Self {
-        Config::parse()
+        Self::parse()
     }
 }
 

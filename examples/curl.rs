@@ -10,6 +10,9 @@ const URLS: &[&str] = &[
     // "https://freetestdata.com/wp-content/uploads/2022/02/Free_Test_Data_10MB_MP4.mp4",
     // "https://freetestdata.com/wp-content/uploads/2022/02/Free_Test_Data_15MB_MP4.mp4",
     "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
 ];
 
 struct Collector(Vec<u8>, ProgressBar);
@@ -35,13 +38,15 @@ fn download(
     mb: MultiProgress,
 ) -> Result<Easy2Handle<Collector>, Box<dyn std::error::Error>> {
     let version = curl::Version::get();
-    let pb = mb.add(ProgressBar::new(0).with_style(
-        ProgressStyle::with_template(
-            "[{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})",
-        )
-        .unwrap()
-        .progress_chars("#>-"),
-    ));
+    let pb = mb.add(
+        ProgressBar::new(0).with_style(
+            ProgressStyle::with_template(
+                "[{bar:40.cyan/blue}] {bytes}/{total_bytes} {bytes_per_sec} (eta {eta})",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+        ),
+    );
 
     let mut request = Easy2::new(Collector(Vec::new(), pb));
     request.url(url)?;

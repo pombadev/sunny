@@ -4,6 +4,7 @@ use std::time::Duration;
 use std::{fs, io};
 
 use anyhow::Result;
+use console::style;
 use curl::easy::{Easy2, Handler, WriteError};
 use curl::multi::{Easy2Handle, Multi};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -90,7 +91,7 @@ impl<'a> Downloader<'a> {
                     .expect("token mismatch with the `EasyHandle`")
                 {
                     Ok(()) => {
-                        bar.set_message("downloaded");
+                        bar.set_message("📥");
                         let Ok(path) = file_path(&album.album, &album.artist, track, root, &tf) else {
                             // need to do something here
                             return;
@@ -101,7 +102,7 @@ impl<'a> Downloader<'a> {
 
                         io::copy(&mut buf.as_slice(), &mut file).unwrap();
 
-                        bar.set_message("saved to disk");
+                        bar.set_message("💾");
 
                         let album_art_url = album.album_art_url.clone().unwrap_or_default();
 
@@ -120,7 +121,11 @@ impl<'a> Downloader<'a> {
                         )
                         .unwrap();
 
-                        bar.finish_with_message("✔");
+                        bar.set_message("🎶");
+
+                        bar.set_style(ProgressStyle::with_template("{msg}").unwrap());
+
+                        bar.finish_with_message(format!("{} {}", track.name, style("✔").green()));
                     }
                     Err(error) => {
                         println!("E: {} - <{}>", error, track.url);
@@ -133,22 +138,24 @@ impl<'a> Downloader<'a> {
             }
         }
 
-        dl.progress_meter.println("done!")?;
+        // dl.progress_meter.println("Downloaded")?;
 
         Ok(())
     }
 
     fn download(&'a self, token: usize, track: Config<'a>) -> Result<Easy2Handle<Collector>> {
-        let pb = self.progress_meter.add(ProgressBar::new(0).with_style(
-            ProgressStyle::with_template(
-                "[{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta}) {msg}",
-            )?
-            .progress_chars("#>-"),
-        ));
-        let url = track.0.url.clone();
+        let pb = self.progress_meter.add(
+            ProgressBar::new(0).with_style(
+                ProgressStyle::with_template(
+                    &format!("{} [{{bar:40.cyan/blue}}] {{bytes}}/{{total_bytes}} {{bytes_per_sec}} (eta {{eta}}){{msg}}", track.0.name),
+                )?
+                .progress_chars("#>-"),
+            ),
+        );
+        let url = &track.0.url;
         let mut request = Easy2::new(Collector(Vec::new(), pb, track));
 
-        request.url(url.as_str())?;
+        request.url(&url[..])?;
         request.useragent(&user_agent())?;
         request.progress(true)?;
 

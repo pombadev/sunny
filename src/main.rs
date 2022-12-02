@@ -53,7 +53,7 @@ fn app_main() -> anyhow::Result<()> {
     let albums = fetch_albums(&url)?;
 
     if list_available {
-        print_as_tree(albums);
+        print_as_tree(&albums);
         return Ok(());
     }
 
