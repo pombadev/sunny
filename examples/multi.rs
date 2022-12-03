@@ -10,8 +10,6 @@ fn main() {
 
     let total = disco.len();
 
-    mb.println(format!("{total} album(s) found")).unwrap();
-
     disco.par_iter().enumerate().for_each(|(mut index, album)| {
         index += 1;
 
@@ -19,7 +17,7 @@ fn main() {
 
         pb.set_style(
             ProgressStyle::default_spinner()
-                .template("{prefix} {spinner} {wide_msg}")
+                .template("╭ {prefix} {spinner}\n╰  {wide_msg}")
                 .unwrap(),
         );
 
@@ -27,28 +25,23 @@ fn main() {
 
         pb.set_prefix(format!("[{index}/{total}] {}", album.album));
 
-        album
-            .tracks
-            .par_iter()
-            .enumerate()
-            .for_each(|(tindex, track)| {
-                // let pb
-                let msg = track.name.clone();
-                pb.set_message(format!("\n ├─ Downloading: {}", &msg));
+        album.tracks.par_iter().enumerate().for_each(|(_, track)| {
+            let msg = track.name.clone();
+            pb.set_message(format!("Downloading: {}", &msg));
 
-                thread::sleep(Duration::from_secs(2));
-                pb.set_message(format!("\n ├─ Downloaded: {}", &msg));
+            thread::sleep(Duration::from_secs(2));
+            pb.set_message(format!("Downloaded: {}", &msg));
 
-                thread::sleep(Duration::from_secs(2));
-                pb.set_message(format!("\n ├─ Saved to disk: {}", &msg));
+            thread::sleep(Duration::from_secs(2));
+            pb.set_message(format!("Saved to disk: {}", &msg));
 
-                thread::sleep(Duration::from_secs(2));
-                pb.set_message(format!("\n ├─ Tagged: {}", &msg));
+            thread::sleep(Duration::from_secs(2));
+            pb.set_message(format!("Tagged: {}", &msg));
 
-                thread::sleep(Duration::from_secs(2));
-                pb.println(format!("\n ├─ Done: {}", &msg));
-                pb.finish();
-            });
+            thread::sleep(Duration::from_secs(2));
+            pb.println(format!("Done: {}", &msg));
+            pb.finish();
+        });
     });
 
     mb.println("done").unwrap();
@@ -57,7 +50,7 @@ fn main() {
 }
 
 fn generate() -> impl Iterator<Item = Album> {
-    (0..10).map(|current| Album {
+    (0..50).map(|current| Album {
         artist: current.to_string(),
         album: format!("#{current} Album"),
         tracks: (1..6)

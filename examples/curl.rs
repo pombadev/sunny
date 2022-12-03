@@ -13,6 +13,28 @@ const URLS: &[&str] = &[
     "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
     "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
     "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
+    "https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz",
 ];
 
 struct Collector(Vec<u8>, ProgressBar);
@@ -41,12 +63,14 @@ fn download(
     let pb = mb.add(
         ProgressBar::new(0).with_style(
             ProgressStyle::with_template(
-                "[{bar:40.cyan/blue}] {bytes}/{total_bytes} {bytes_per_sec} (eta {eta})",
+                "╭ {prefix}\n╰ [{bar:40.cyan/blue}] {bytes}/{total_bytes} {bytes_per_sec} (eta {eta})",
             )
             .unwrap()
             .progress_chars("#>-"),
         ),
     );
+
+    pb.set_prefix(url[..].to_string());
 
     let mut request = Easy2::new(Collector(Vec::new(), pb));
     request.url(url)?;

@@ -1,21 +1,22 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::mpsc::channel;
 use std::time::Duration;
-use std::{fs, io};
+use std::{fs, io, thread};
 
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use console::style;
 use curl::easy::{Easy2, Handler, WriteError};
-use curl::multi::{Easy2Handle, Multi};
+use curl::multi::{Easy2Handle, Message, Multi};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use crate::{
     client::{self, user_agent},
     models::{Album, Track},
-    utils::{file_path, make_path, tag_mp3, timestamp},
+    utils::{make_path, tag_mp3, timestamp, track_path},
 };
 
-type Config<'a> = (&'a Track, &'a Album, PathBuf);
+type Config<'a> = (&'a Track, PathBuf);
 type RunConfig<'a> = Vec<Config<'a>>;
 
 struct Collector<'a>(Vec<u8>, ProgressBar, Config<'a>);
@@ -57,8 +58,8 @@ impl<'a> Downloader<'a> {
             .tracks
             .iter()
             .enumerate()
-            .filter(|(_, (track, album, root))| {
-                if make_path(&album.album, &album.artist, track, root, &tf).exists() {
+            .filter(|(_, (track, root))| {
+                if make_path(track, root, &tf).exists() {
                     eprintln!("`{}` already exist, skipping", track.name);
                     return false;
                 }
@@ -81,56 +82,8 @@ impl<'a> Downloader<'a> {
             }
 
             dl.client.messages(|message| {
-                let token = message.token().expect("failed to get the token");
-                let handle = &handles[&token];
-
-                let Collector(buf, bar, (track, album, root)) = handle.get_ref();
-
-                match message
-                    .result_for2(handle)
-                    .expect("token mismatch with the `EasyHandle`")
-                {
-                    Ok(()) => {
-                        bar.set_message("📥");
-                        let Ok(path) = file_path(&album.album, &album.artist, track, root, &tf) else {
-                            // need to do something here
-                            return;
-                        };
-
-
-                        let mut file = fs::File::create(&path).unwrap();
-
-                        io::copy(&mut buf.as_slice(), &mut file).unwrap();
-
-                        bar.set_message("💾");
-
-                        let album_art_url = album.album_art_url.clone().unwrap_or_default();
-
-                        let album_art = if album_art_url.is_empty() {
-                            None
-                        } else {
-                            Some(client::get(&album_art_url).unwrap())
-                        };
-
-                        tag_mp3(
-                            album,
-                            album_art,
-                            timestamp(&album.release_date),
-                            track,
-                            &path,
-                        )
-                        .unwrap();
-
-                        bar.set_message("🎶");
-
-                        bar.set_style(ProgressStyle::with_template("{msg}").unwrap());
-
-                        bar.finish_with_message(format!("{} {}", track.name, style("✔").green()));
-                    }
-                    Err(error) => {
-                        println!("E: {} - <{}>", error, track.url);
-                    }
-                }
+                let _ = message_handler(message, &handles, &tf)
+                    .context("Failed to process downloaded item(s)");
             });
 
             if still_alive {
@@ -143,17 +96,25 @@ impl<'a> Downloader<'a> {
         Ok(())
     }
 
-    fn download(&'a self, token: usize, track: Config<'a>) -> Result<Easy2Handle<Collector>> {
+    fn download(&'a self, token: usize, cfg: Config<'a>) -> Result<Easy2Handle<Collector>> {
         let pb = self.progress_meter.add(
             ProgressBar::new(0).with_style(
                 ProgressStyle::with_template(
-                    &format!("{} [{{bar:40.cyan/blue}}] {{bytes}}/{{total_bytes}} {{bytes_per_sec}} (eta {{eta}}){{msg}}", track.0.name),
+                    "╭ {prefix} {wide_msg}\n╰  {bytes}/{total_bytes} (eta {eta})",
                 )?
                 .progress_chars("#>-"),
             ),
         );
-        let url = &track.0.url;
-        let mut request = Easy2::new(Collector(Vec::new(), pb, track));
+
+        let mut prefix = cfg.0.album.album.clone();
+
+        prefix.push('/');
+        prefix.push_str(cfg.0.name.as_str());
+
+        pb.set_prefix(prefix);
+
+        let url = &cfg.0.url;
+        let mut request = Easy2::new(Collector(Vec::new(), pb, cfg));
 
         request.url(&url[..])?;
         request.useragent(&user_agent())?;
@@ -164,4 +125,69 @@ impl<'a> Downloader<'a> {
 
         Ok(handle)
     }
+}
+
+fn message_handler(
+    message: Message,
+    handles: &HashMap<usize, Easy2Handle<Collector>>,
+    track_fmt: &String,
+) -> Result<()> {
+    let token = message.token().map_err(|err| anyhow!("{err}"))?;
+    let handle = &handles[&token];
+
+    let Collector(buf, bar, (track, root)) = handle.get_ref();
+    let Album {
+        release_date,
+        album_art_url,
+        ..
+    } = &track.album;
+
+    match message
+        .result_for2(handle)
+        .expect("token mismatch with the `EasyHandle`")
+    {
+        Ok(()) => {
+            bar.set_message("📥");
+            let path = track_path(track, root, track_fmt)?;
+
+            let mut file = fs::File::create(&path)?;
+
+            io::copy(&mut buf.as_slice(), &mut file)?;
+
+            bar.set_message("💾");
+
+            let album_art_url = album_art_url.clone().unwrap_or_default();
+
+            let album_art = if album_art_url.is_empty() {
+                None
+            } else if let Ok(album_art) = offload(album_art_url) {
+                Some(album_art)
+            } else {
+                None
+            };
+
+            tag_mp3(album_art, timestamp(release_date), track, &path)?;
+
+            bar.set_message("🎶");
+
+            bar.finish_with_message(style("✔").green().to_string());
+        }
+        Err(error) => {
+            println!("E: {} - <{}>", error, track.url);
+        }
+    }
+
+    Ok(())
+}
+
+fn offload(url: String) -> Result<Vec<u8>> {
+    let (tx, rx) = channel();
+
+    thread::spawn(move || -> Result<()> {
+        tx.send(client::get(&url)?)?;
+
+        Ok(())
+    });
+
+    Ok(rx.recv()?)
 }

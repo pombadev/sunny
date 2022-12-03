@@ -70,10 +70,7 @@ fn app_main() -> anyhow::Result<()> {
             let root =
                 prepare_directory(path.as_ref(), album).expect("root directory to be created");
 
-            album
-                .tracks
-                .iter()
-                .map(move |track| (track, album, root.clone()))
+            album.tracks.iter().map(move |track| (track, root.clone()))
         })
         .collect();
 

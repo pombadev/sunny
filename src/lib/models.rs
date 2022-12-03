@@ -4,6 +4,7 @@ pub struct Track {
     pub name: String,
     pub url: String,
     pub lyrics: Option<String>,
+    pub album: Album,
 }
 
 impl Track {
@@ -35,7 +36,7 @@ impl Track {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Album {
     pub artist: String,
     pub album: String,

@@ -11,7 +11,6 @@ use scraper::{Html, Selector};
 use crate::{
     client,
     models::{Album, Track},
-    utils::{green_check, red_cross},
 };
 
 fn find_track_by_name(dom: &Html, track_name: &gjson::Value) -> Option<Track> {
@@ -90,6 +89,7 @@ fn scrape_by_application_ld_json(dom: &Html) -> Option<Album> {
             name: track_name.to_string(),
             url,
             lyrics: None,
+            album: album.clone(),
         }]
     } else {
         // case when current url is an album
@@ -116,6 +116,7 @@ fn scrape_by_application_ld_json(dom: &Html) -> Option<Album> {
                     name: decode_html_entities(&track.get("item.name").to_string()).into(),
                     url: decode_html_entities(&url).to_string(),
                     lyrics: Some(track.get("item.recordingOf.lyrics.text").to_string()),
+                    album: album.clone(),
                 })
             })
             .collect()
@@ -155,6 +156,7 @@ fn scrape_by_data_tralbum(dom: &Html) -> Album {
                     name: item.get("title").to_string(),
                     url: item.get("file.mp3-128").to_string(),
                     lyrics: None,
+                    album: album.clone(),
                 })
                 .collect();
         }
@@ -207,7 +209,7 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
     pb.set_prefix("Fetching artist's info");
 
     let html = fetch_html(url).map_err(|err| {
-        pb.finish_with_message(red_cross());
+        pb.finish_with_message(style("✘").bold().red().to_string());
         anyhow!("{err}")
     })?;
 
@@ -216,7 +218,7 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
     if is_album {
         let album = get_album(&html);
 
-        pb.finish_with_message(green_check());
+        pb.finish_with_message(style("✔").bold().green().to_string());
 
         return Ok(album.into_iter().collect());
     }
@@ -238,7 +240,7 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
             })
             .collect::<Vec<_>>();
 
-        pb.finish_with_message(green_check());
+        pb.finish_with_message(style("✔").bold().green().to_string());
 
         return Ok(albums);
     }

@@ -1,5 +1,4 @@
 use anyhow::{bail, Result};
-use console::style;
 use id3::{
     frame::{Lyrics, Picture, PictureType},
     Tag, TagLike, Timestamp, Version,
@@ -13,14 +12,6 @@ use std::{
 };
 
 use super::models::{Album, Track};
-
-pub fn red_cross() -> String {
-    style("✘").bold().red().to_string()
-}
-
-pub fn green_check() -> String {
-    style("✔").bold().green().to_string()
-}
 
 pub fn prepare_directory(path: Option<&PathBuf>, album: &Album) -> Result<PathBuf> {
     let path = match path {
@@ -36,33 +27,21 @@ pub fn prepare_directory(path: Option<&PathBuf>, album: &Album) -> Result<PathBu
     Ok(path)
 }
 
-pub fn make_path(
-    album: &String,
-    artist: &String,
-    track: &Track,
-    root: &Path,
-    track_format: &String,
-) -> PathBuf {
+pub fn make_path(track: &Track, root: &Path, track_format: &String) -> PathBuf {
     let file_name = if track_format.is_empty() {
         format!("{} - {}", &track.num, &track.name)
     } else {
-        parse_track_template(track_format, album, artist, track)
+        parse_track_template(track_format, track)
     };
 
     root.join(file_name).with_extension("mp3")
 }
 
-pub fn file_path(
-    album: &String,
-    artist: &String,
-    track: &Track,
-    root: &Path,
-    track_format: &String,
-) -> Result<PathBuf> {
+pub fn track_path(track: &Track, root: &Path, track_format: &String) -> Result<PathBuf> {
     let file_name = if track_format.is_empty() {
         format!("{} - {}", &track.num, &track.name)
     } else {
-        parse_track_template(track_format, album, artist, track)
+        parse_track_template(track_format, track)
     };
 
     let file = root.join(file_name).with_extension("mp3");
@@ -75,7 +54,7 @@ pub fn file_path(
 }
 
 pub fn timestamp(date_string: &str) -> Option<Timestamp> {
-    use chrono::prelude::*;
+    use chrono::{Datelike, TimeZone, Timelike, Utc};
 
     // if String looks like this `28 Sep 2014 04:19:31 GMT`
     match Utc.datetime_from_str(date_string, "%d %b %Y %T %Z") {
@@ -125,26 +104,22 @@ pub fn format_container(
     ])
 }
 
-pub fn parse_track_template(
-    format: &str,
-    album: &String,
-    artist: &String,
-    track: &Track,
-) -> String {
+pub fn parse_track_template(format: &str, track: &Track) -> String {
+    let Album { album, artist, .. } = &track.album;
     let Track { ref num, name, .. } = track;
+
     let vars = format_container(&num.to_string(), name, album, artist);
 
-    // we can do this because we validate user's input
     strfmt(format, &vars).expect("failed to format keys")
 }
 
 pub fn tag_mp3(
-    album: &Album,
     album_art: Option<Vec<u8>>,
     release_date: Option<id3::Timestamp>,
     track: &Track,
     path: &Path,
 ) -> Result<()> {
+    let album = &track.album;
     let mut tag = Tag::new();
 
     tag.set_title(&*track.name);
