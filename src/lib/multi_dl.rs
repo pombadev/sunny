@@ -100,7 +100,7 @@ impl<'a> Downloader<'a> {
         let pb = self.progress_meter.add(
             ProgressBar::new(0).with_style(
                 ProgressStyle::with_template(
-                    "╭ {prefix} {wide_msg}\n╰  {bytes}/{total_bytes} (eta {eta})",
+                    "╭ {prefix} {wide}\n╰ [{bar:40.cyan/blue}] {bytes}/{total_bytes} {bytes_per_sec} (eta {eta})",
                 )?
                 .progress_chars("#>-"),
             ),
