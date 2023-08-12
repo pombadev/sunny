@@ -8,6 +8,7 @@ mod multi_dl;
 
 pub use multi_dl::Downloader as MultiDownloader;
 
+#[must_use]
 pub fn user_agent() -> String {
     format!(
         "{}/{} ({}, {}) curl/{}",

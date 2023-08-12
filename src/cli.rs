@@ -93,12 +93,7 @@ impl Default for Config {
 }
 
 fn validate_format(f: &str) -> Result<String, String> {
-    let vars = format_container(
-        &String::new(),
-        &String::new(),
-        &String::new(),
-        &String::new(),
-    );
+    let vars = format_container("", "", "", "");
 
     strfmt(f, &vars).map_err(|err| err.to_string())
 }

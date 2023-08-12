@@ -60,11 +60,9 @@ fn app_main() -> anyhow::Result<()> {
     let tracks = albums
         .iter()
         .filter(|album| {
-            if let Some(to_skip) = &skip_albums {
-                !to_skip.contains(&album.album)
-            } else {
-                true
-            }
+            skip_albums
+                .as_ref()
+                .map_or(true, |to_skip| !to_skip.contains(&album.album))
         })
         .flat_map(|album| {
             let root =

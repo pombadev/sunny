@@ -15,17 +15,17 @@
 
 ### Demo
 
-[![Demo](./assets/demo.svg)](./assets/demo.svg)
-
+[![Demo](./assets/demo.gif)](./assets/demo.gif)
 
 ### Motivation
 
-Sunny is hugely inspired by [SoundScrape](https://github.com/Miserlou/SoundScrape), the main motivation  for writing this was speed and customizability.
+Sunny is hugely inspired by [SoundScrape](https://github.com/Miserlou/SoundScrape), the main motivation for writing this was speed and customizability.
 
 - SoundScrape downloads sequentially whereas Sunny does parallelly, giving a huge boost of speed.
 - Track format can be customized.
 
 ### Format
+
 By default files are saved in this structure in current directory if `--path` option is not passed.
 
 ```
@@ -65,59 +65,60 @@ sunny yvetteyoung --path=~/Music
 ## CLI options
 
 ```
-USAGE:
-    sunny [OPTIONS] <ARTIST | URL>
+Usage: sunny [OPTIONS] <ARTIST | URL>
 
-ARGS:
-    <ARTIST | URL>
-            Artist's bandcamp username or full url
+Arguments:
+  <ARTIST | URL>
+          Artist's bandcamp username or full url
 
-OPTIONS:
-    -p, --path <PATH>
+Options:
+  -t, --track-format <FORMAT>
+          Specify track format: default is '{num} - {track}'
 
-            Directory path where downloads should be saved to.
-            By default files are saved in the current directory.
+          available keys:
+              {num} - track number
+              {track} - track
+              {artist} - artist
+              {album} - album
 
-    -t, --track-format <FORMAT>
+          usage:
+              -t='{num} - {track} - {album} {artist}'
 
-            Specify track format: default is '{num} - {track}'
+          expands to:
+              2 - Track - Album Artist
 
-            available keys:
-                {num} - track number
-                {track} - track
-                {artist} - artist
-                {album} - album
+          note that `.mp3` is appended automatically.
 
-            usage:
-                -t='{num} - {track} - {album} {artist}'
+  -p, --path <PATH>
+          Directory path where downloads should be saved to.
+          By default files are saved in the current directory.
 
-            expands to:
-                2 - ATrack - SomeAlbum SomeArtist
+  -S, --skip-albums <ALBUMS>
+          Skip downloading these albums, note that albums need to be delimited by ',' eg: -s 'one,two' or --skip-albums=one,two
 
-            note that `.mp3` is appended automatically.
+  -l, --list-available
+          List albums/tracks available for download
 
-        --dry-run
-            Do not do anything; just show what would happen
+  -s, --search
+          Search artist, album, label, track or all, instead of downloading
 
-    -h, --help
-            Print help information
+  -T, --type <TYPE>
+          Specify type to search for, available only for `--search` flag
 
-    -l, --list-available
-            list albums/tracks available to download
+          [default: artists]
+          [possible values: all, artists, labels, albums, tracks]
 
-    -s, --skip-albums <ALBUMS>...
-            Skip downloading these albums, note that albums need to be delimited by ','
-            eg: -s 'one,two' or --skip-albums='one,two'
+  -h, --help
+          Print help (see a summary with '-h')
 
-    -V, --version
-            Print version information
+  -V, --version
+          Print version
+
+      --dry-run
+          Do not do anything; just show what would happen
+
+Note: run --help to see full descriptions of each flags/options
 ```
-
-<!-- ## Run tests
-
-```sh
-cargo test
-``` -->
 
 ## Contributing
 

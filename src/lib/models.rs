@@ -8,6 +8,7 @@ pub struct Track {
 }
 
 impl Track {
+    #[must_use]
     pub fn missing_fields(&self) -> Vec<String> {
         let mut missing = vec![];
 
@@ -30,6 +31,7 @@ impl Track {
         missing
     }
 
+    #[must_use]
     pub fn has_missing_fields(&self) -> bool {
         // name & url are only fields we really need
         self.name.is_empty() || self.url.is_empty()

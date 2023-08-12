@@ -5,10 +5,10 @@ use std::time::Duration;
 use std::{fs, io, thread};
 
 use anyhow::{anyhow, Context, Result};
-use console::style;
+use console::Style;
 use curl::easy::{Easy2, Handler, WriteError};
 use curl::multi::{Easy2Handle, Message, Multi};
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::{
     client::{self, user_agent},
@@ -27,28 +27,38 @@ impl Handler for Collector<'_> {
         Ok(data.len())
     }
 
-    fn progress(&mut self, dltotal: f64, dlnow: f64, _: f64, _: f64) -> bool {
-        self.1.set_length(dltotal as u64);
-        self.1.set_position(dlnow as u64);
-        true
-    }
+    // fn progress(&mut self, dltotal: f64, dlnow: f64, _: f64, _: f64) -> bool {
+    //     self.1.set_length(dltotal as u64);
+    //     self.1.set_position(dlnow as u64);
+    //     true
+    // }
 }
 
 pub struct Downloader<'a> {
     tracks: RunConfig<'a>,
-    progress_meter: MultiProgress,
+    progress_meter: ProgressBar,
     client: Multi,
 }
 
 impl<'a> Downloader<'a> {
     pub fn run(dump: RunConfig<'a>, track_format: Option<&String>) -> Result<()> {
+        let len = dump.len();
         let dl = Self {
             tracks: dump,
-            progress_meter: MultiProgress::new(),
+            progress_meter: ProgressBar::new(len as u64),
             client: Multi::new(),
         };
 
-        let tf = track_format.map_or_else(String::new, std::clone::Clone::clone);
+        dl.progress_meter.set_style(
+            ProgressStyle::with_template("{prefix:.cyan/bold} [{bar:57}] {pos}/{len} {msg}")?
+                .progress_chars("=> "),
+        );
+
+        let tf = if let Some(f) = track_format {
+            f.to_owned()
+        } else {
+            String::new()
+        };
 
         let handles = dl
             .tracks
@@ -61,7 +71,7 @@ impl<'a> Downloader<'a> {
                 }
 
                 if track.url.is_empty() {
-                    eprintln!("No url found for `{}`, skipping.", track.name);
+                    eprintln!("Track url is empty, skipping");
                     false
                 } else {
                     true
@@ -78,7 +88,7 @@ impl<'a> Downloader<'a> {
             }
 
             dl.client.messages(|message| {
-                let _ = message_handler(&message, &handles, &tf)
+                let _ = message_handler(message, &handles, &tf)
                     .context("Failed to process downloaded item(s)");
             });
 
@@ -93,27 +103,28 @@ impl<'a> Downloader<'a> {
     }
 
     fn download(&'a self, token: usize, cfg: Config<'a>) -> Result<Easy2Handle<Collector>> {
-        let pb = self.progress_meter.add(
-            ProgressBar::new(0).with_style(
-                ProgressStyle::with_template(
-                    "{prefix} {msg} [{wide_bar}] {bytes}/{total_bytes} ({eta})",
-                )?
-                .progress_chars("=> "),
-            ),
-        );
+        // let pb = self.progress_meter.add(
+        //     ProgressBar::new(0).with_style(
+        //         ProgressStyle::with_template(
+        //             "╭ {prefix} {wide}\n╰ [{bar:40.cyan/blue}] {bytes}/{total_bytes} {bytes_per_sec} (eta {eta})",
+        //         )?
+        //         .progress_chars("#>-"),
+        //     ),
+        // );
+        let pb = &self.progress_meter;
 
-        let prefix = PathBuf::from(cfg.0.album.artist.clone())
-            .join(cfg.0.album.album.clone())
-            .join(cfg.0.name.clone());
+        let prefix = cfg.0.album.album.clone();
 
-        pb.set_prefix(prefix.display().to_string());
+        // prefix.push('/');
+        // prefix.push_str(cfg.0.name.as_str());
+
+        pb.set_prefix(Style::new().bold().cyan().apply_to(prefix).to_string());
 
         let url = &cfg.0.url;
-        let mut request = Easy2::new(Collector(Vec::new(), pb, cfg));
+        let mut request = Easy2::new(Collector(Vec::new(), pb.clone(), cfg));
 
         request.url(&url[..])?;
         request.useragent(&user_agent())?;
-        request.progress(true)?;
 
         let mut handle = self.client.add2(request)?;
         handle.set_token(token)?;
@@ -123,7 +134,7 @@ impl<'a> Downloader<'a> {
 }
 
 fn message_handler(
-    message: &Message,
+    message: Message,
     handles: &HashMap<usize, Easy2Handle<Collector>>,
     track_fmt: &String,
 ) -> Result<()> {
@@ -142,14 +153,16 @@ fn message_handler(
         .expect("token mismatch with the `EasyHandle`")
     {
         Ok(()) => {
-            bar.set_message("📥");
+            let title = track.name.clone();
+
+            bar.set_message(format!("{title} (📥)"));
             let path = track_path(track, root, track_fmt)?;
 
             let mut file = fs::File::create(&path)?;
 
             io::copy(&mut buf.as_slice(), &mut file)?;
 
-            bar.set_message("💾");
+            bar.set_message(format!("{title} (💾)"));
 
             let album_art_url = album_art_url.clone().unwrap_or_default();
 
@@ -163,19 +176,22 @@ fn message_handler(
 
             tag_mp3(album_art, timestamp(release_date), track, &path)?;
 
+            bar.set_message(format!("{title} (🎶)"));
+
+            // bar.finish_with_message(style("✔").green().to_string());
             bar.println(format!(
-                "{}/{} {}",
-                track.album.artist,
-                bar.prefix(),
-                style("✔").green()
+                "{} {title}",
+                Style::new().green().bold().apply_to("Downloaded"),
             ));
 
-            bar.finish_and_clear();
+            bar.inc(1);
         }
         Err(error) => {
             println!("E: {} - <{}>", error, track.url);
         }
     }
+
+    bar.finish_with_message("all downloaded");
 
     Ok(())
 }

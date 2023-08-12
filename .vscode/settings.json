@@ -13,5 +13,8 @@
         "svenstaro",
         "trackinfo",
         "tralbum"
+    ],
+    "cSpell.enableFiletypes": [
+        "!rust"
     ]
 }

@@ -1,41 +1,59 @@
 use std::thread;
-use std::time::Duration;
+use std::time;
 
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use console::Style;
+use indicatif::{ProgressBar, ProgressStyle};
+use sunny::models::Album;
 
 fn main() {
-    let m = MultiProgress::new();
-    let sty = ProgressStyle::with_template(
-        "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
-    )
-    .unwrap()
-    .progress_chars("##-");
+    let albums: Vec<Album> = vec![];
 
-    m.println("starting!").unwrap();
+    let total = albums
+        .iter()
+        .flat_map(|album| album.tracks.iter().map(|_| ()))
+        .count();
 
-    let mut h = vec![];
+    let pb = ProgressBar::new(total as u64);
 
-    for _ in 0..50 {
-        let pb = m.add(ProgressBar::new(128));
-        pb.set_style(sty.clone());
+    pb.set_style(
+        ProgressStyle::with_template("{prefix} [{bar:57}] {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("=> "),
+    );
 
-        let m_clone = m.clone();
-        let h1 = thread::spawn(move || {
-            for i in 0..128 {
-                pb.set_message(format!("item #{}", i + 1));
+    albums.iter().for_each(|album| {
+        pb.set_prefix(
+            Style::new()
+                .cyan()
+                .bold()
+                .apply_to(album.album.clone())
+                .to_string(),
+        );
+
+        let _ = album
+            .tracks
+            .iter()
+            .try_for_each(|track| -> anyhow::Result<()> {
+                let title = track.name.clone();
+
+                pb.set_message(format!("{title} (📥)"));
+                thread::sleep(time::Duration::from_secs(1));
+
+                pb.set_message(format!("{title} (💾)"));
+                thread::sleep(time::Duration::from_secs(1));
+
+                pb.set_message(format!("{title} (🎶)"));
+                thread::sleep(time::Duration::from_secs(1));
+
+                pb.println(format!(
+                    "{} {title}",
+                    Style::new().green().bold().apply_to("Downloaded"),
+                ));
+
                 pb.inc(1);
-                thread::sleep(Duration::from_millis(50));
-            }
-            m_clone.println("pb1 is done!").unwrap();
-            pb.finish_with_message("done");
-        });
+                Ok(())
+            });
+    });
 
-        h.push(h1);
-    }
-
-    for k in h {
-        k.join().unwrap();
-    }
-
-    // m.clear().unwrap();
+    pb.finish_with_message("all downloaded");
 }

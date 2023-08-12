@@ -18,7 +18,7 @@ fn find_track_by_name(dom: &Html, track_name: &gjson::Value) -> Option<Track> {
 
     album.tracks.iter().find_map(|inner_track| {
         if inner_track.name == track_name.str() {
-            Some(inner_track.to_owned())
+            Some(inner_track.clone())
         } else {
             None
         }
@@ -231,13 +231,7 @@ pub fn fetch_albums(url: &str) -> Result<Vec<Album>> {
     if is_discography {
         let albums = get_all_album_links(&html)
             .par_iter()
-            .filter_map(|url| {
-                if let Ok(dom) = fetch_html(url) {
-                    get_album(&dom)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|url| fetch_html(url).map_or(None, |dom| get_album(&dom)))
             .collect::<Vec<_>>();
 
         pb.finish_with_message(style("✔").bold().green().to_string());
@@ -266,6 +260,12 @@ pub fn search(query: &str, query_type: &str) -> Result<()> {
 
     let response = client::send(handle)?;
     let json = unsafe { gjson::get_bytes(response.as_slice(), "auto.results") };
+    let results = json.array();
+
+    if results.is_empty() {
+        eprintln!("No matching results\nTry a different `--type` or a new search keyword.");
+        return Ok(());
+    }
 
     use term_table::{
         row::Row,

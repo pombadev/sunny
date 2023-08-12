@@ -27,6 +27,7 @@ pub fn prepare_directory(path: Option<&PathBuf>, album: &Album) -> Result<PathBu
     Ok(path)
 }
 
+#[must_use]
 pub fn make_path(track: &Track, root: &Path, track_format: &String) -> PathBuf {
     let file_name = if track_format.is_empty() {
         format!("{} - {}", &track.num, &track.name)
@@ -53,6 +54,7 @@ pub fn track_path(track: &Track, root: &Path, track_format: &String) -> Result<P
     Ok(file)
 }
 
+#[must_use]
 pub fn timestamp(date_string: &str) -> Option<Timestamp> {
     use chrono::{Datelike, TimeZone, Timelike, Utc};
 
@@ -90,11 +92,12 @@ pub fn timestamp(date_string: &str) -> Option<Timestamp> {
     }
 }
 
+#[must_use]
 pub fn format_container(
-    num: &String,
-    track: &String,
-    album: &String,
-    artist: &String,
+    num: &str,
+    track: &str,
+    album: &str,
+    artist: &str,
 ) -> HashMap<String, String> {
     HashMap::from([
         ("num".to_string(), num.to_owned()),
@@ -104,6 +107,7 @@ pub fn format_container(
     ])
 }
 
+#[must_use]
 pub fn parse_track_template(format: &str, track: &Track) -> String {
     let Album { album, artist, .. } = &track.album;
     let Track { ref num, name, .. } = track;
@@ -164,7 +168,7 @@ pub fn print_as_tree(albums: &[Album]) {
     } else {
         let artist = &albums[0].artist;
 
-        println!("{}", artist);
+        println!("{artist}");
 
         for (album_index, album) in albums.iter().enumerate() {
             let next_album = albums.get(album_index + 1);
