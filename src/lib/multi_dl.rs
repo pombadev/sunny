@@ -57,11 +57,6 @@ impl<'a> Downloader<'a> {
             .filter(|(_, (track, root))| {
                 if make_path(track, root, &tf).exists() {
                     eprintln!("`{}` already exist, skipping", track.name);
-                    return false;
-                }
-
-                if track.url.is_empty() {
-                    eprintln!("No url found for `{}`, skipping.", track.name);
                     false
                 } else {
                     true
@@ -96,7 +91,7 @@ impl<'a> Downloader<'a> {
         let pb = self.progress_meter.add(
             ProgressBar::new(0).with_style(
                 ProgressStyle::with_template(
-                    "{prefix} {msg} [{wide_bar}] {bytes}/{total_bytes} ({eta})",
+                    "{prefix} {msg}\n[{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})",
                 )?
                 .progress_chars("=> "),
             ),
@@ -163,12 +158,7 @@ fn message_handler(
 
             tag_mp3(album_art, timestamp(release_date), track, &path)?;
 
-            bar.println(format!(
-                "{}/{} {}",
-                track.album.artist,
-                bar.prefix(),
-                style("✔").green()
-            ));
+            bar.println(format!("{} {}", bar.prefix(), style("✔").green()));
 
             bar.finish_and_clear();
         }
