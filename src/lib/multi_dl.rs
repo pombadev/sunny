@@ -56,7 +56,7 @@ impl<'a> Downloader<'a> {
             .enumerate()
             .filter(|(_, (track, root))| {
                 if make_path(track, root, &tf).exists() {
-                    eprintln!("`{}` already exist, skipping", track.name);
+                    eprintln!("`{}` already exists, skipping", track.name);
                     false
                 } else {
                     true

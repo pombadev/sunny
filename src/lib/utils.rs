@@ -48,7 +48,7 @@ pub fn track_path(track: &Track, root: &Path, track_format: &String) -> Result<P
     let file = root.join(file_name).with_extension("mp3");
 
     if file.exists() {
-        bail!("{} already exist", file.display())
+        bail!("{} already exists", file.display())
     }
 
     Ok(file)
