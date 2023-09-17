@@ -56,10 +56,10 @@ pub fn track_path(track: &Track, root: &Path, track_format: &String) -> Result<P
 
 #[must_use]
 pub fn timestamp(date_string: &str) -> Option<Timestamp> {
-    use chrono::{Datelike, TimeZone, Timelike, Utc};
+    use chrono::{DateTime, Datelike, Timelike};
 
     // if String looks like this `28 Sep 2014 04:19:31 GMT`
-    match Utc.datetime_from_str(date_string, "%d %b %Y %T %Z") {
+    match DateTime::parse_from_str(date_string, "%d %b %Y %T %Z") {
         Ok(date) => Some(Timestamp {
             year: date.year(),
             month: Some(date.month() as u8),
@@ -74,7 +74,7 @@ pub fn timestamp(date_string: &str) -> Option<Timestamp> {
                 let mut date_string = date_string.to_owned();
                 date_string.push_str(" 01:01:01");
 
-                match Utc.datetime_from_str(&date_string, "released %B %d, %Y %T") {
+                match DateTime::parse_from_str(&date_string, "released %B %d, %Y %T") {
                     Ok(date) => Some(Timestamp {
                         year: date.year(),
                         month: Some(date.month() as u8),

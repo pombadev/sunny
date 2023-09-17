@@ -18,8 +18,8 @@ path = "src/lib/mod.rs"
 
 [dependencies]
 anyhow = "1.0.75"
-chrono = {version = "0.4.27", default-features = false}
-clap = {version = "4.4.1", default-features = false, features = [
+chrono = {version = "0.4.31", default-features = false}
+clap = {version = "4.4.3", default-features = false, features = [
     "derive",
     "error-context",
     "help",

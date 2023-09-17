@@ -26,7 +26,7 @@ Sunny is hugely inspired by [SoundScrape](https://github.com/Miserlou/SoundScrap
 
 ### Format
 
-By default files are saved in this structure in current directory if `--path` option is not passed.
+By default, files are saved in this structure in current directory if `--path` option is not passed.
 
 ```
 Artist
@@ -123,3 +123,5 @@ Note: run --help to see full descriptions of each flags/options
 ## Contributing
 
 Contributions, issues and feature requests are welcome!
+
+Please have a look at [TODO.md](./TODO.md). 
